@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import requests
+import base64
 import os
 import io
 
@@ -20,6 +21,20 @@ GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
 class TTSRequest(BaseModel):
     text: str
     language: str = "en-US"
+
+def text_to_ssml(text: str) -> str:
+    text = text.strip()
+    text = text.replace('&', '&amp;')
+    text = text.replace('<', '&lt;')
+    text = text.replace('>', '&gt;')
+    text = text.replace('...', '<break time="600ms"/>')
+    text = text.replace('.', '.<break time="450ms"/>')
+    text = text.replace('!', '!<break time="450ms"/>')
+    text = text.replace('?', '?<break time="450ms"/>')
+    text = text.replace(',', ',<break time="180ms"/>')
+    text = text.replace(':', ':<break time="250ms"/>')
+    text = text.replace(';', ';<break time="250ms"/>')
+    return f"<speak>{text}</speak>"
 
 @app.get("/")
 def root():
@@ -41,13 +56,15 @@ def tts_stream(req: TTSRequest):
     }
 
     voice = voice_map.get(req.language, voice_map["en-US"])
+    ssml = text_to_ssml(req.text)
 
     payload = {
-        "input": {"text": req.text.strip()},
+        "input": {"ssml": ssml},
         "voice": voice,
         "audioConfig": {
             "audioEncoding": "MP3",
-            "speakingRate": 0.85
+            "speakingRate": 0.85,
+            "effectsProfileId": ["headphone-class-device"]
         }
     }
 
@@ -57,11 +74,13 @@ def tts_stream(req: TTSRequest):
     if response.status_code != 200:
         raise HTTPException(status_code=500, detail=f"Google TTS error: {response.text}")
 
-    import base64
     audio_bytes = base64.b64decode(response.json().get("audioContent", ""))
-    
+
     return StreamingResponse(
         io.BytesIO(audio_bytes),
         media_type="audio/mpeg",
-        headers={"Content-Disposition": "inline", "Accept-Ranges": "bytes"}
+        headers={
+            "Content-Disposition": "inline",
+            "Accept-Ranges": "bytes"
+        }
     )
