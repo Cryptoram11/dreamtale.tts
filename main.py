@@ -35,21 +35,21 @@ def tts_stream(req: TTSRequest):
         raise HTTPException(status_code=400, detail="Text is empty")
 
     voice_map = {
-        "en":  {"languageCode": "en-US", "name": "en-US-Journey-F"},
-        "ar":  {"languageCode": "ar-XA", "name": "ar-XA-Wavenet-A"},
-        "fr":  {"languageCode": "fr-FR", "name": "fr-FR-Journey-F"},
-        "es":  {"languageCode": "es-ES", "name": "es-ES-Journey-F"},
-        "pt":  {"languageCode": "pt-BR", "name": "pt-BR-Wavenet-A"},
-        "de":  {"languageCode": "de-DE", "name": "de-DE-Journey-F"},
-        "zh":  {"languageCode": "cmn-CN", "name": "cmn-CN-Wavenet-A"},
-        "hi":  {"languageCode": "hi-IN", "name": "hi-IN-Wavenet-A"},
-        "tr":  {"languageCode": "tr-TR", "name": "tr-TR-Wavenet-A"},
-        "id":  {"languageCode": "id-ID", "name": "id-ID-Wavenet-A"},
-        "ru":  {"languageCode": "ru-RU", "name": "ru-RU-Wavenet-A"},
-        "ja":  {"languageCode": "ja-JP", "name": "ja-JP-Wavenet-A"},
-        "ko":  {"languageCode": "ko-KR", "name": "ko-KR-Wavenet-A"},
-        "it":  {"languageCode": "it-IT", "name": "it-IT-Journey-F"},
-        "nl":  {"languageCode": "nl-NL", "name": "nl-NL-Wavenet-A"},
+        "en":  {"languageCode": "en-US",  "name": "en-US-Journey-F"},
+        "ar":  {"languageCode": "ar-XA",  "name": "ar-XA-Journey-F"},
+        "fr":  {"languageCode": "fr-FR",  "name": "fr-FR-Journey-F"},
+        "es":  {"languageCode": "es-ES",  "name": "es-ES-Journey-F"},
+        "pt":  {"languageCode": "pt-BR",  "name": "pt-BR-Journey-F"},
+        "de":  {"languageCode": "de-DE",  "name": "de-DE-Journey-F"},
+        "zh":  {"languageCode": "cmn-CN", "name": "cmn-CN-Wavenet-D"},
+        "hi":  {"languageCode": "hi-IN",  "name": "hi-IN-Journey-F"},
+        "tr":  {"languageCode": "tr-TR",  "name": "tr-TR-Journey-F"},
+        "id":  {"languageCode": "id-ID",  "name": "id-ID-Journey-F"},
+        "ru":  {"languageCode": "ru-RU",  "name": "ru-RU-Wavenet-E"},
+        "ja":  {"languageCode": "ja-JP",  "name": "ja-JP-Journey-F"},
+        "ko":  {"languageCode": "ko-KR",  "name": "ko-KR-Journey-F"},
+        "it":  {"languageCode": "it-IT",  "name": "it-IT-Journey-F"},
+        "nl":  {"languageCode": "nl-NL",  "name": "nl-NL-Journey-F"},
     }
 
     voice = voice_map.get(req.language, voice_map["en"])
