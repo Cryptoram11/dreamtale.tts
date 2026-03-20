@@ -47,7 +47,6 @@ def text_to_speech(req: TTSRequest):
         "audioConfig": {
             "audioEncoding": "MP3",
             "speakingRate": 0.85,
-            "pitch": 2.0
         }
     }
 
