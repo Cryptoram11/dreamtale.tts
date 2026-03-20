@@ -1,9 +1,10 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import requests
-import base64
 import os
+import io
 
 app = FastAPI()
 
@@ -24,8 +25,8 @@ class TTSRequest(BaseModel):
 def root():
     return {"status": "DreamTale TTS server is running"}
 
-@app.post("/tts")
-def text_to_speech(req: TTSRequest):
+@app.post("/tts-stream")
+def tts_stream(req: TTSRequest):
     if not GOOGLE_API_KEY:
         raise HTTPException(status_code=500, detail="API key not configured")
 
@@ -46,7 +47,7 @@ def text_to_speech(req: TTSRequest):
         "voice": voice,
         "audioConfig": {
             "audioEncoding": "MP3",
-            "speakingRate": 0.85,
+            "speakingRate": 0.85
         }
     }
 
@@ -56,8 +57,11 @@ def text_to_speech(req: TTSRequest):
     if response.status_code != 200:
         raise HTTPException(status_code=500, detail=f"Google TTS error: {response.text}")
 
-    audio_base64 = response.json().get("audioContent", "")
-    if not audio_base64:
-        raise HTTPException(status_code=500, detail="No audio returned")
-
-    return {"audio": audio_base64}
+    import base64
+    audio_bytes = base64.b64decode(response.json().get("audioContent", ""))
+    
+    return StreamingResponse(
+        io.BytesIO(audio_bytes),
+        media_type="audio/mpeg",
+        headers={"Content-Disposition": "inline", "Accept-Ranges": "bytes"}
+    )
