@@ -20,7 +20,7 @@ GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
 
 class TTSRequest(BaseModel):
     text: str
-    language: str = "en-US"
+    language: str = "en"
 
 def text_to_ssml(text: str) -> str:
     text = text.strip()
@@ -49,13 +49,24 @@ def tts_stream(req: TTSRequest):
         raise HTTPException(status_code=400, detail="Text is empty")
 
     voice_map = {
-        "en-US": {"languageCode": "en-US", "name": "en-US-Journey-F"},
-        "ar":    {"languageCode": "ar-XA", "name": "ar-XA-Wavenet-A"},
-        "fr":    {"languageCode": "fr-FR", "name": "fr-FR-Journey-F"},
-        "es":    {"languageCode": "es-ES", "name": "es-ES-Journey-F"},
+        "en":  {"languageCode": "en-US", "name": "en-US-Journey-F"},
+        "ar":  {"languageCode": "ar-XA", "name": "ar-XA-Wavenet-A"},
+        "fr":  {"languageCode": "fr-FR", "name": "fr-FR-Journey-F"},
+        "es":  {"languageCode": "es-ES", "name": "es-ES-Journey-F"},
+        "pt":  {"languageCode": "pt-BR", "name": "pt-BR-Wavenet-A"},
+        "de":  {"languageCode": "de-DE", "name": "de-DE-Journey-F"},
+        "zh":  {"languageCode": "cmn-CN", "name": "cmn-CN-Wavenet-A"},
+        "hi":  {"languageCode": "hi-IN", "name": "hi-IN-Wavenet-A"},
+        "tr":  {"languageCode": "tr-TR", "name": "tr-TR-Wavenet-A"},
+        "id":  {"languageCode": "id-ID", "name": "id-ID-Wavenet-A"},
+        "ru":  {"languageCode": "ru-RU", "name": "ru-RU-Wavenet-A"},
+        "ja":  {"languageCode": "ja-JP", "name": "ja-JP-Wavenet-A"},
+        "ko":  {"languageCode": "ko-KR", "name": "ko-KR-Wavenet-A"},
+        "it":  {"languageCode": "it-IT", "name": "it-IT-Journey-F"},
+        "nl":  {"languageCode": "nl-NL", "name": "nl-NL-Wavenet-A"},
     }
 
-    voice = voice_map.get(req.language, voice_map["en-US"])
+    voice = voice_map.get(req.language, voice_map["en"])
     ssml = text_to_ssml(req.text)
 
     payload = {
@@ -63,8 +74,7 @@ def tts_stream(req: TTSRequest):
         "voice": voice,
         "audioConfig": {
             "audioEncoding": "MP3",
-            "speakingRate": 0.85,
-            "effectsProfileId": ["headphone-class-device"]
+            "speakingRate": 0.85
         }
     }
 
