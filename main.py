@@ -22,20 +22,6 @@ class TTSRequest(BaseModel):
     text: str
     language: str = "en"
 
-def text_to_ssml(text: str) -> str:
-    text = text.strip()
-    text = text.replace('&', '&amp;')
-    text = text.replace('<', '&lt;')
-    text = text.replace('>', '&gt;')
-    text = text.replace('...', '<break time="600ms"/>')
-    text = text.replace('.', '.<break time="450ms"/>')
-    text = text.replace('!', '!<break time="450ms"/>')
-    text = text.replace('?', '?<break time="450ms"/>')
-    text = text.replace(',', ',<break time="180ms"/>')
-    text = text.replace(':', ':<break time="250ms"/>')
-    text = text.replace(';', ';<break time="250ms"/>')
-    return f"<speak>{text}</speak>"
-
 @app.get("/")
 def root():
     return {"status": "DreamTale TTS server is running"}
@@ -67,10 +53,9 @@ def tts_stream(req: TTSRequest):
     }
 
     voice = voice_map.get(req.language, voice_map["en"])
-    ssml = text_to_ssml(req.text)
 
     payload = {
-        "input": {"ssml": ssml},
+        "input": {"text": req.text.strip()},
         "voice": voice,
         "audioConfig": {
             "audioEncoding": "MP3",
