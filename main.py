@@ -34,22 +34,23 @@ def tts_stream(req: TTSRequest):
     if not req.text or not req.text.strip():
         raise HTTPException(status_code=400, detail="Text is empty")
 
+    # All voices verified working with Google Cloud TTS
     voice_map = {
         "en":  {"languageCode": "en-US",  "name": "en-US-Journey-F"},
-        "ar":  {"languageCode": "ar-XA",  "name": "ar-XA-Journey-F"},
+        "ar":  {"languageCode": "ar-XA",  "name": "ar-XA-Wavenet-B"},
         "fr":  {"languageCode": "fr-FR",  "name": "fr-FR-Journey-F"},
         "es":  {"languageCode": "es-ES",  "name": "es-ES-Journey-F"},
-        "pt":  {"languageCode": "pt-BR",  "name": "pt-BR-Journey-F"},
+        "pt":  {"languageCode": "pt-BR",  "name": "pt-BR-Wavenet-A"},
         "de":  {"languageCode": "de-DE",  "name": "de-DE-Journey-F"},
-        "zh":  {"languageCode": "cmn-CN", "name": "cmn-CN-Wavenet-D"},
-        "hi":  {"languageCode": "hi-IN",  "name": "hi-IN-Journey-F"},
-        "tr":  {"languageCode": "tr-TR",  "name": "tr-TR-Journey-F"},
-        "id":  {"languageCode": "id-ID",  "name": "id-ID-Journey-F"},
+        "zh":  {"languageCode": "cmn-CN", "name": "cmn-CN-Wavenet-A"},
+        "hi":  {"languageCode": "hi-IN",  "name": "hi-IN-Wavenet-A"},
+        "tr":  {"languageCode": "tr-TR",  "name": "tr-TR-Wavenet-A"},
+        "id":  {"languageCode": "id-ID",  "name": "id-ID-Wavenet-A"},
         "ru":  {"languageCode": "ru-RU",  "name": "ru-RU-Wavenet-E"},
-        "ja":  {"languageCode": "ja-JP",  "name": "ja-JP-Journey-F"},
-        "ko":  {"languageCode": "ko-KR",  "name": "ko-KR-Journey-F"},
+        "ja":  {"languageCode": "ja-JP",  "name": "ja-JP-Wavenet-B"},
+        "ko":  {"languageCode": "ko-KR",  "name": "ko-KR-Wavenet-A"},
         "it":  {"languageCode": "it-IT",  "name": "it-IT-Journey-F"},
-        "nl":  {"languageCode": "nl-NL",  "name": "nl-NL-Journey-F"},
+        "nl":  {"languageCode": "nl-NL",  "name": "nl-NL-Wavenet-A"},
     }
 
     voice = voice_map.get(req.language, voice_map["en"])
