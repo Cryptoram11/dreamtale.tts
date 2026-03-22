@@ -25,12 +25,12 @@ class TTSRequest(BaseModel):
 
 class AvatarRequest(BaseModel):
     image_url: str
-    style: str = "pixar cartoon, children's book illustration, warm colors, friendly"
+    character_name: str
 
 class IllustrationRequest(BaseModel):
-    avatar_url: str
-    scene: str
+    image_url: str
     character_name: str
+    scene: str
 
 @app.get("/")
 def root():
@@ -95,30 +95,29 @@ def create_avatar(req: AvatarRequest):
     }
 
     payload = {
-        "image_url": req.image_url,
-        "prompt": f"Convert this child's photo into a {req.style}, suitable for a children's storybook, keep facial features recognizable, cute and friendly expression",
-        "negative_prompt": "realistic, photo, dark, scary, violent, adult",
+        "image_archive_url": req.image_url,
+        "prompt": f"A cute cartoon child named {req.character_name}, Pixar style, children's book illustration, warm colors, friendly expression, soft lighting, high quality",
+        "negative_prompt": "realistic, photo, dark, scary, violent, adult, text, watermark, ugly",
         "num_inference_steps": 30,
-        "guidance_scale": 7.5
+        "style_name": "Cartoon"
     }
 
     response = requests.post(
-        "https://fal.run/fal-ai/photomaker",
+        "https://fal.run/fal-ai/photomaker-style",
         headers=headers,
         json=payload,
-        timeout=60
+        timeout=90
     )
 
     if response.status_code != 200:
         raise HTTPException(status_code=500, detail=f"FAL error: {response.text}")
 
     result = response.json()
-    image_url = result.get("images", [{}])[0].get("url", "")
-
-    if not image_url:
+    images = result.get("images", [])
+    if not images:
         raise HTTPException(status_code=500, detail="No image returned")
 
-    return {"avatar_url": image_url}
+    return {"avatar_url": images[0].get("url", "")}
 
 @app.post("/create-illustration")
 def create_illustration(req: IllustrationRequest):
@@ -131,27 +130,26 @@ def create_illustration(req: IllustrationRequest):
     }
 
     payload = {
-        "image_url": req.avatar_url,
-        "prompt": f"Children's storybook illustration, Pixar style, warm and colorful. {req.character_name} is {req.scene}. Friendly, magical, beautiful background, soft lighting, high quality illustration.",
-        "negative_prompt": "realistic, photo, dark, scary, violent, adult, text, watermark",
+        "image_archive_url": req.image_url,
+        "prompt": f"Children's storybook illustration, Pixar style, warm and colorful. {req.character_name} is {req.scene}. Magical atmosphere, soft lighting, beautiful background, high quality, no text, no watermark.",
+        "negative_prompt": "realistic, photo, dark, scary, violent, adult, text, watermark, ugly, deformed",
         "num_inference_steps": 30,
-        "guidance_scale": 7.5
+        "style_name": "Cartoon"
     }
 
     response = requests.post(
-        "https://fal.run/fal-ai/photomaker",
+        "https://fal.run/fal-ai/photomaker-style",
         headers=headers,
         json=payload,
-        timeout=60
+        timeout=90
     )
 
     if response.status_code != 200:
         raise HTTPException(status_code=500, detail=f"FAL error: {response.text}")
 
     result = response.json()
-    image_url = result.get("images", [{}])[0].get("url", "")
-
-    if not image_url:
+    images = result.get("images", [])
+    if not images:
         raise HTTPException(status_code=500, detail="No image returned")
 
-    return {"illustration_url": image_url}
+    return {"illustration_url": images[0].get("url", "")}
