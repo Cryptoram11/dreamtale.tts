@@ -95,15 +95,14 @@ def create_avatar(req: AvatarRequest):
     }
 
     payload = {
-        "image_archive_url": req.image_url,
-        "prompt": f"A cute cartoon child named {req.character_name}, Pixar style, children's book illustration, warm colors, friendly expression, soft lighting, high quality",
-        "negative_prompt": "realistic, photo, dark, scary, violent, adult, text, watermark, ugly",
-        "num_inference_steps": 30,
-        "style_name": "Cartoon"
+        "image_url": req.image_url,
+        "prompt": f"A cute cartoon child named {req.character_name}, Pixar style children's book illustration, warm colors, friendly expression, soft lighting, high quality, no text, no watermark",
+        "negative_prompt": "realistic, photo, dark, scary, violent, adult, text, watermark, ugly, deformed",
+        "style": "cartoon"
     }
 
     response = requests.post(
-        "https://fal.run/fal-ai/photomaker-style",
+        "https://fal.run/fal-ai/ideogram/character",
         headers=headers,
         json=payload,
         timeout=90
@@ -130,15 +129,14 @@ def create_illustration(req: IllustrationRequest):
     }
 
     payload = {
-        "image_archive_url": req.image_url,
+        "image_url": req.image_url,
         "prompt": f"Children's storybook illustration, Pixar style, warm and colorful. {req.character_name} is {req.scene}. Magical atmosphere, soft lighting, beautiful background, high quality, no text, no watermark.",
         "negative_prompt": "realistic, photo, dark, scary, violent, adult, text, watermark, ugly, deformed",
-        "num_inference_steps": 30,
-        "style_name": "Cartoon"
+        "style": "cartoon"
     }
 
     response = requests.post(
-        "https://fal.run/fal-ai/photomaker-style",
+        "https://fal.run/fal-ai/ideogram/character",
         headers=headers,
         json=payload,
         timeout=90
