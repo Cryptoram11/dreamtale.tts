@@ -95,7 +95,7 @@ def create_avatar(req: AvatarRequest):
     }
 
     payload = {
-        "prompt": f"A cute child named {req.character_name} in a Pixar style children's book illustration. Warm colors, friendly expression, soft lighting, high quality, no text, no watermark.",
+        "prompt": f"A cute Pixar-style cartoon child character portrait. The child in the reference photo, rendered as an animated movie character. Warm colors, big expressive eyes, friendly smile, soft lighting, children's book illustration style, full face visible, centered in frame.",
         "reference_image_urls": [req.image_url],
         "style": "AUTO",
         "magic_prompt_option": "OFF"
@@ -129,7 +129,7 @@ def create_illustration(req: IllustrationRequest):
     }
 
     payload = {
-        "prompt": f"Children's storybook illustration, Pixar style, warm and colorful. {req.character_name} is {req.scene}. Magical atmosphere, soft lighting, beautiful background, high quality, no text, no watermark.",
+        "prompt": f"Pixar style children's storybook illustration. The child from the reference photo is the main character standing in the center of the scene. The child is {req.scene}. Full body visible, child is prominent in the image, magical colorful background, warm soft lighting, no text, no watermark.",
         "reference_image_urls": [req.image_url],
         "style": "AUTO",
         "magic_prompt_option": "OFF"
