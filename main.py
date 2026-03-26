@@ -134,7 +134,7 @@ def create_illustration(req: IllustrationRequest):
 
     headers = {"Authorization": f"Key {FAL_API_KEY}", "Content-Type": "application/json"}
     payload = {
-        "prompt": f"Pixar style children's storybook illustration. The child from the reference photo is the main character standing in the center of the scene. The child is {req.scene}. Full body visible, child is prominent in the image, magical colorful background, warm soft lighting, no text, no watermark.",
+       "prompt": f"Pixar 3D animated movie style illustration. The EXACT child from the reference photo — preserve their face, hair color, hair style, skin tone, and facial features precisely. The child is {req.scene}. Full body shot, child centered and prominent, magical colorful background, warm soft lighting, high quality, no text, no watermark.",
         "reference_image_urls": [req.image_url],
         "style": "AUTO",
         "magic_prompt_option": "OFF"
