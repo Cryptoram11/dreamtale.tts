@@ -39,10 +39,10 @@ def root():
 @app.get("/music/{track_name}")
 def get_music(track_name: str):
     music_urls = {
-        "ocean":   "https://cdn.pixabay.com/audio/2022/03/10/audio_270f798b14.mp3",
-        "forest":  "https://cdn.pixabay.com/audio/2022/03/15/audio_8cb5b8b3b4.mp3",
-        "rain":    "https://cdn.pixabay.com/audio/2022/01/18/audio_d0c6ff1c32.mp3",
-        "lullaby": "https://cdn.pixabay.com/audio/2022/10/30/audio_8ff4e6b5de.mp3"
+        "ocean":   "https://pixabay.com/music/ambient-purebinaural-4-hz-delta-binaural-beat-with-ocean-waves-484843/",
+        "forest":  "https://pixabay.com/sound-effects/nature-calm-nature-sounds-196258/",
+        "rain":    "https://pixabay.com/sound-effects/nature-calming-rain-257596/",
+        "lullaby": "https://pixabay.com/users/ikoliks_aj-48415707/"
     }
     url = music_urls.get(track_name)
     if not url:
