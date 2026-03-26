@@ -1,11 +1,12 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 import requests
 import base64
 import os
 import io
+import uuid
 
 app = FastAPI()
 
@@ -18,6 +19,9 @@ app.add_middleware(
 
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
 FAL_API_KEY = os.environ.get("FAL_API_KEY", "")
+
+# In-memory photo storage (temporary)
+photo_store = {}
 
 class TTSRequest(BaseModel):
     text: str
@@ -36,24 +40,25 @@ class IllustrationRequest(BaseModel):
 def root():
     return {"status": "DreamTale server is running"}
 
-@app.get("/music/{track_name}")
-def get_music(track_name: str):
-    music_urls = {
-        "ocean":   "https://pixabay.com/music/ambient-purebinaural-4-hz-delta-binaural-beat-with-ocean-waves-484843/",
-        "forest":  "https://pixabay.com/sound-effects/nature-calm-nature-sounds-196258/",
-        "rain":    "https://pixabay.com/sound-effects/nature-calming-rain-257596/",
-        "lullaby": "https://pixabay.com/users/ikoliks_aj-48415707/"
+@app.post("/upload-photo")
+async def upload_photo(file: UploadFile = File(...)):
+    contents = await file.read()
+    photo_id = str(uuid.uuid4())
+    photo_store[photo_id] = {
+        "data": contents,
+        "content_type": file.content_type or "image/jpeg"
     }
-    url = music_urls.get(track_name)
-    if not url:
-        raise HTTPException(status_code=404, detail="Track not found")
-    response = requests.get(url, timeout=30)
-    if response.status_code != 200:
-        raise HTTPException(status_code=500, detail="Failed to fetch audio")
+    photo_url = f"https://dreamtale-tts.onrender.com/photo/{photo_id}"
+    return {"photo_url": photo_url, "photo_id": photo_id}
+
+@app.get("/photo/{photo_id}")
+def get_photo(photo_id: str):
+    if photo_id not in photo_store:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    photo = photo_store[photo_id]
     return StreamingResponse(
-        io.BytesIO(response.content),
-        media_type="audio/mpeg",
-        headers={"Content-Disposition": "inline", "Accept-Ranges": "bytes", "Cache-Control": "public, max-age=86400"}
+        io.BytesIO(photo["data"]),
+        media_type=photo["content_type"]
     )
 
 @app.post("/tts-stream")
