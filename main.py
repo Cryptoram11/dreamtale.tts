@@ -35,6 +35,7 @@ class IllustrationRequest(BaseModel):
     image_url: str
     character_name: str
     scene: str
+    age: int = 6
 
 @app.get("/")
 def root():
