@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import requests
 import base64
@@ -19,8 +19,8 @@ app.add_middleware(
 
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
 FAL_API_KEY = os.environ.get("FAL_API_KEY", "")
+SILICONFLOW_API_KEY = os.environ.get("SILICONFLOW_API_KEY", "")
 
-# In-memory photo storage (temporary)
 photo_store = {}
 
 class TTSRequest(BaseModel):
@@ -108,42 +108,74 @@ def tts_stream(req: TTSRequest):
 
 @app.post("/create-avatar")
 def create_avatar(req: AvatarRequest):
-    if not FAL_API_KEY:
-        raise HTTPException(status_code=500, detail="FAL API key not configured")
+    if not SILICONFLOW_API_KEY:
+        raise HTTPException(status_code=500, detail="SiliconFlow API key not configured")
 
-    headers = {"Authorization": f"Key {FAL_API_KEY}", "Content-Type": "application/json"}
-    payload = {
-        "prompt": f"A cute child named {req.character_name} in a Pixar style children's book illustration. Warm colors, friendly expression, soft lighting, high quality, no text, no watermark.",
-        "reference_image_urls": [req.image_url],
-        "style": "AUTO",
-        "magic_prompt_option": "OFF"
+    headers = {
+        "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
+        "Content-Type": "application/json"
     }
 
-    response = requests.post("https://fal.run/fal-ai/ideogram/character", headers=headers, json=payload, timeout=90)
-    if response.status_code != 200:
-        raise HTTPException(status_code=500, detail=f"FAL error: {response.text}")
+    payload = {
+        "model": "black-forest-labs/FLUX.1-Kontext-dev",
+        "prompt": f"Transform this child into a Pixar 3D animated movie character. Preserve their facial features, hair color, hair style, and skin tone. Warm colors, friendly expression, soft lighting, children's book illustration style, high quality, no text, no watermark.",
+        "image_url": req.image_url,
+        "width": 512,
+        "height": 512,
+        "num_inference_steps": 28,
+        "guidance_scale": 3.5
+    }
 
-    images = response.json().get("images", [])
+    response = requests.post(
+        "https://api.siliconflow.cn/v1/images/generations",
+        headers=headers,
+        json=payload,
+        timeout=90
+    )
+
+    if response.status_code != 200:
+        raise HTTPException(status_code=500, detail=f"SiliconFlow error: {response.text}")
+
+    result = response.json()
+    images = result.get("images", [])
     if not images:
         raise HTTPException(status_code=500, detail="No image returned")
+
     return {"avatar_url": images[0].get("url", "")}
 
 @app.post("/create-illustration")
 def create_illustration(req: IllustrationRequest):
-    if not FAL_API_KEY:
-        raise HTTPException(status_code=500, detail="FAL API key not configured")
+    if not SILICONFLOW_API_KEY:
+        raise HTTPException(status_code=500, detail="SiliconFlow API key not configured")
 
-    headers = {"Authorization": f"Key {FAL_API_KEY}", "Content-Type": "application/json"}
-    payload = {
-"prompt": f"Pixar 3D animated children's storybook illustration. The EXACT child from the reference photo — preserve their hair color, hair style, skin tone. The child appears to be approximately {req.age} years old. The child is {req.scene}. Wide scene shot, full body visible, child in middle distance, scene and environment prominent, magical colorful background, warm soft lighting, no text, no watermark.",        "style": "AUTO",
-        "magic_prompt_option": "OFF"
+    headers = {
+        "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
+        "Content-Type": "application/json"
     }
 
-    response = requests.post("https://fal.run/fal-ai/ideogram/character", headers=headers, json=payload, timeout=90)
-    if response.status_code != 200:
-        raise HTTPException(status_code=500, detail=f"FAL error: {response.text}")
+    payload = {
+        "model": "black-forest-labs/FLUX.1-Kontext-dev",
+        "prompt": f"Pixar 3D animated children's storybook illustration. Wide scene shot. A {req.age} year old child character based on the reference image — same hair, skin tone, and facial features. The child is {req.scene}. Full body visible, child prominent in center, magical colorful background, warm soft lighting, cinematic composition, high quality, no text, no watermark.",
+        "image_url": req.image_url,
+        "width": 768,
+        "height": 1024,
+        "num_inference_steps": 28,
+        "guidance_scale": 3.5
+    }
 
-    images = response.json().get("images", [])
+    response = requests.post(
+        "https://api.siliconflow.cn/v1/images/generations",
+        headers=headers,
+        json=payload,
+        timeout=90
+    )
+
+    if response.status_code != 200:
+        raise HTTPException(status_code=500, detail=f"SiliconFlow error: {response.text}")
+
+    result = response.json()
+    images = result.get("images", [])
     if not images:
         raise HTTPException(status_code=500, detail="No image returned")
+
     return {"illustration_url": images[0].get("url", "")}
