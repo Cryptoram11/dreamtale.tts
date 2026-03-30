@@ -27,12 +27,8 @@ class TTSRequest(BaseModel):
     text: str
     language: str = "en"
 
-class AvatarRequest(BaseModel):
-    image_url: str
-    character_name: str
-
 class IllustrationRequest(BaseModel):
-    image_url: str
+    image_url: str = ""
     character_name: str
     scene: str
     age: int = 6
@@ -106,43 +102,6 @@ def tts_stream(req: TTSRequest):
         headers={"Content-Disposition": "inline", "Accept-Ranges": "bytes"}
     )
 
-@app.post("/create-avatar")
-def create_avatar(req: AvatarRequest):
-    if not SILICONFLOW_API_KEY:
-        raise HTTPException(status_code=500, detail="SiliconFlow API key not configured")
-
-    headers = {
-        "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "model": "black-forest-labs/FLUX.1-Kontext-dev",
-        "prompt": f"Transform this child into a Pixar 3D animated movie character. Preserve their facial features, hair color, hair style, and skin tone. Warm colors, friendly expression, soft lighting, children's book illustration style, high quality, no text, no watermark.",
-        "image_url": req.image_url,
-        "width": 512,
-        "height": 512,
-        "num_inference_steps": 28,
-        "guidance_scale": 3.5
-    }
-
-    response = requests.post(
-        "https://api.siliconflow.cn/v1/images/generations",
-        headers=headers,
-        json=payload,
-        timeout=90
-    )
-
-    if response.status_code != 200:
-        raise HTTPException(status_code=500, detail=f"SiliconFlow error: {response.text}")
-
-    result = response.json()
-    images = result.get("images", [])
-    if not images:
-        raise HTTPException(status_code=500, detail="No image returned")
-
-    return {"avatar_url": images[0].get("url", "")}
-
 @app.post("/create-illustration")
 def create_illustration(req: IllustrationRequest):
     if not SILICONFLOW_API_KEY:
@@ -153,21 +112,21 @@ def create_illustration(req: IllustrationRequest):
         "Content-Type": "application/json"
     }
 
+    prompt = f"Children's storybook illustration, cute cartoon anime style, warm and colorful. A {req.age} year old child named {req.character_name} is {req.scene}. Full body visible, child centered and prominent in the scene, magical colorful background with rich details, soft warm lighting, beautiful environment, high quality illustration, no text, no watermark."
+
     payload = {
-        "model": "black-forest-labs/FLUX.1-Kontext-dev",
-        "prompt": f"Pixar 3D animated children's storybook illustration. Wide scene shot. A {req.age} year old child character based on the reference image — same hair, skin tone, and facial features. The child is {req.scene}. Full body visible, child prominent in center, magical colorful background, warm soft lighting, cinematic composition, high quality, no text, no watermark.",
-        "image_url": req.image_url,
-        "width": 768,
-        "height": 1024,
-        "num_inference_steps": 28,
-        "guidance_scale": 3.5
+        "model": "black-forest-labs/FLUX.1-schnell",
+        "prompt": prompt,
+        "image_size": "768x1024",
+        "num_inference_steps": 4,
+        "n": 1
     }
 
     response = requests.post(
-        "https://api.siliconflow.cn/v1/images/generations",
+        "https://api.ap.siliconflow.com/v1/images/generations",
         headers=headers,
         json=payload,
-        timeout=90
+        timeout=60
     )
 
     if response.status_code != 200:
