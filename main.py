@@ -137,4 +137,19 @@ def create_illustration(req: IllustrationRequest):
     if not images:
         raise HTTPException(status_code=500, detail="No image returned")
 
-    return {"illustration_url": images[0].get("url", "")}
+    siliconflow_url = images[0].get("url", "")
+    if not siliconflow_url:
+        raise HTTPException(status_code=500, detail="No image URL returned")
+
+    # Proxy the image through our server so it never expires
+    img_response = requests.get(siliconflow_url, timeout=30)
+    if img_response.status_code != 200:
+        raise HTTPException(status_code=500, detail="Failed to fetch image from SiliconFlow")
+
+    img_id = str(uuid.uuid4())
+    photo_store[img_id] = {
+        "data": img_response.content,
+        "content_type": "image/jpeg"
+    }
+    proxied_url = f"https://dreamtale-tts.onrender.com/photo/{img_id}"
+    return {"illustration_url": proxied_url}
