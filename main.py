@@ -20,6 +20,7 @@ app.add_middleware(
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
 FAL_API_KEY = os.environ.get("FAL_API_KEY", "")
 SILICONFLOW_API_KEY = os.environ.get("SILICONFLOW_API_KEY", "")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 
 photo_store = {}
 
@@ -31,6 +32,11 @@ class IllustrationRequest(BaseModel):
     image_url: str = ""
     character_name: str
     scene: str
+    age: int = 6
+    character_description: str = ""
+
+class DescribeChildRequest(BaseModel):
+    photo_url: str
     age: int = 6
 
 @app.get("/")
@@ -57,6 +63,49 @@ def get_photo(photo_id: str):
         io.BytesIO(photo["data"]),
         media_type=photo["content_type"]
     )
+
+@app.post("/describe-child")
+def describe_child(req: DescribeChildRequest):
+    if not OPENAI_API_KEY:
+        raise HTTPException(status_code=500, detail="OpenAI API key not configured")
+
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "model": "gpt-4o-mini",
+        "max_tokens": 150,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": req.photo_url}
+                    },
+                    {
+                        "type": "text",
+                        "text": f"Describe this child's appearance in detail for an illustration artist. Include: hair color and style, eye color, skin tone, face shape, and any notable features. Keep it under 50 words. Format: 'a {req.age} year old child with [description]'. Do not include the child's name or any identifying information."
+                    }
+                ]
+            }
+        ]
+    }
+
+    response = requests.post(
+        "https://api.openai.com/v1/chat/completions",
+        headers=headers,
+        json=payload,
+        timeout=30
+    )
+
+    if response.status_code != 200:
+        raise HTTPException(status_code=500, detail=f"OpenAI error: {response.text}")
+
+    description = response.json()["choices"][0]["message"]["content"].strip()
+    return {"character_description": description}
 
 @app.post("/tts-stream")
 def tts_stream(req: TTSRequest):
@@ -112,7 +161,12 @@ def create_illustration(req: IllustrationRequest):
         "Content-Type": "application/json"
     }
 
-    prompt = f"Children's storybook illustration, cute cartoon anime style, warm and colorful. A {req.age} year old child named {req.character_name} is {req.scene}. Full body visible, child centered and prominent in the scene, magical colorful background with rich details, soft warm lighting, beautiful environment, high quality illustration, no text, no watermark."
+    if req.character_description and req.character_description.strip():
+        character_desc = req.character_description.strip()
+    else:
+        character_desc = f"a {req.age} year old child with big expressive eyes, round face, soft cheeks, cheerful smile"
+
+    prompt = f"Children's storybook illustration, cute cartoon anime style, warm and colorful. The main character is {character_desc}, named {req.character_name}. The character is {req.scene}. Full body visible, character centered and prominent in the scene, magical colorful background with rich details, soft warm lighting, beautiful environment, high quality illustration, no text, no watermark. Always draw the character with the SAME facial features and hair throughout."
 
     payload = {
         "model": "black-forest-labs/FLUX.1-schnell",
@@ -141,7 +195,6 @@ def create_illustration(req: IllustrationRequest):
     if not siliconflow_url:
         raise HTTPException(status_code=500, detail="No image URL returned")
 
-    # Proxy the image through our server so it never expires
     img_response = requests.get(siliconflow_url, timeout=30)
     if img_response.status_code != 200:
         raise HTTPException(status_code=500, detail="Failed to fetch image from SiliconFlow")
