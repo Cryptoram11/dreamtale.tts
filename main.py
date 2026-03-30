@@ -137,18 +137,4 @@ def create_illustration(req: IllustrationRequest):
     if not images:
         raise HTTPException(status_code=500, detail="No image returned")
 
-   print("FULL RESPONSE:", result)
-
-images = result.get("images") or result.get("data") or []
-
-if not images:
-    raise HTTPException(status_code=500, detail="No images returned from API")
-
-image_url = images[0].get("url")
-
-print("IMAGE URL:", image_url)
-
-if not image_url:
-    raise HTTPException(status_code=500, detail="Image URL missing")
-
-return {"illustration_url": image_url}
+    return {"illustration_url": images[0].get("url", "")}
