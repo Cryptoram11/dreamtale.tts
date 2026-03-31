@@ -116,7 +116,7 @@ def tts_stream(req: TTSRequest):
 
     voice_map = {
         "en":  {"languageCode": "en-US",  "name": "en-US-Journey-F"},
-        "ar":  {"languageCode": "ar-XA",  "name": "ar-XA-Wavenet-A"},
+        "ar":  {"languageCode": "ar-XA",  "name": "ar-XA-Journey-D"},
         "fr":  {"languageCode": "fr-FR",  "name": "fr-FR-Journey-F"},
         "es":  {"languageCode": "es-ES",  "name": "es-ES-Journey-F"},
         "pt":  {"languageCode": "pt-BR",  "name": "pt-BR-Wavenet-A"},
