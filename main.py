@@ -156,17 +156,51 @@ def create_illustration(req: IllustrationRequest):
     if not SILICONFLOW_API_KEY:
         raise HTTPException(status_code=500, detail="SiliconFlow API key not configured")
 
-    headers = {
-        "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
+    if not OPENAI_API_KEY:
+        raise HTTPException(status_code=500, detail="OpenAI API key not configured")
+
+    # Step 1: Use GPT to expand the scene into a rich cinematic prompt
+    headers_openai = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
         "Content-Type": "application/json"
     }
 
+    expansion_payload = {
+        "model": "gpt-4o-mini",
+        "max_tokens": 120,
+        "messages": [
+            {
+                "role": "user",
+                "content": f"Expand this children's storybook scene into a rich cinematic illustration description in exactly one sentence of max 60 words. Focus on the environment, setting, lighting, colors, and what the character is doing. Make it wide and detailed like a movie scene. Do not mention character appearance. Scene: {req.scene}"
+            }
+        ]
+    }
+
+    expanded_scene = req.scene
+    try:
+        expansion_response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers_openai,
+            json=expansion_payload,
+            timeout=15
+        )
+        if expansion_response.status_code == 200:
+            expanded_scene = expansion_response.json()["choices"][0]["message"]["content"].strip()
+    except Exception:
+        expanded_scene = req.scene
+
+    # Step 2: Build illustration prompt
     if req.character_description and req.character_description.strip():
         character_desc = req.character_description.strip()
     else:
         character_desc = f"a {req.age} year old child with big expressive eyes, round face, soft cheeks, cheerful smile"
 
-    prompt = f"Children's storybook illustration, cute cartoon anime style, warm and colorful. IMPORTANT: character has {character_desc} — keep hair color and style exactly as described. Scene: {req.character_name} is {req.scene}. Wide shot of the full environment, character naturally placed in the scene doing the action, rich detailed world, the background tells the story, soft warm lighting, high quality, no text, no watermark."
+    prompt = f"Children's storybook illustration, cute cartoon anime style, warm and colorful. Character: {character_desc}. Scene: {expanded_scene}. Wide establishing shot, character small in a large detailed world, rich environment, soft warm lighting, high quality, no text, no watermark."
+
+    headers_sf = {
+        "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
+        "Content-Type": "application/json"
+    }
 
     payload = {
         "model": "black-forest-labs/FLUX.1-schnell",
@@ -178,7 +212,7 @@ def create_illustration(req: IllustrationRequest):
 
     response = requests.post(
         "https://api.ap.siliconflow.com/v1/images/generations",
-        headers=headers,
+        headers=headers_sf,
         json=payload,
         timeout=60
     )
