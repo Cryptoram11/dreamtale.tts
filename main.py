@@ -87,7 +87,8 @@ def describe_child(req: DescribeChildRequest):
                     },
                     {
                         "type": "text",
-                         "text": f"Describe this child for a cartoon illustrator. Lead with hair FIRST. Format exactly: 'a {req.age} year old child with [HAIR COLOR] [HAIR STYLE] hair, [EYE COLOR] eyes, [SKIN TONE] skin, [FACE SHAPE] face'. Example: 'a 5 year old child with dark brown straight hair, brown eyes, olive skin, round face'. Under 40 words. No name. No extra sentences."                    }
+                        "text": f"Describe this child for a cartoon illustrator. Lead with hair FIRST. Format exactly: 'a {req.age} year old child with [HAIR COLOR] [HAIR STYLE] hair, [EYE COLOR] eyes, [SKIN TONE] skin, [FACE SHAPE] face'. Example: 'a 5 year old child with dark brown straight hair, brown eyes, olive skin, round face'. Under 40 words. No name. No extra sentences."
+                    }
                 ]
             }
         ]
@@ -165,15 +166,16 @@ def create_illustration(req: IllustrationRequest):
     else:
         character_desc = f"a {req.age} year old child with big expressive eyes, round face, soft cheeks, cheerful smile"
 
-prompt = f"Children's storybook illustration, cute cartoon anime style, warm and colorful. IMPORTANT: character has {character_desc} — keep hair color and style exactly as described. The character's name is {req.character_name}. Scene: {req.character_name} is {req.scene}. Wide establishing shot showing the full environment, character is small-to-medium in the frame actively doing something, rich detailed background world, the scene tells the story visually, soft warm lighting, high quality, no text, no watermark." 
-payload = {
-    "model": "black-forest-labs/FLUX.1-schnell",
-    "prompt": prompt,
-    "image_size": "768x1024",
-    "num_inference_steps": 4,
-    "seed": 42,
-    "n": 1
-}
+    prompt = f"Children's storybook illustration, cute cartoon anime style, warm and colorful. IMPORTANT: character has {character_desc} — keep hair color and style exactly as described. The character's name is {req.character_name}. Scene: {req.character_name} is {req.scene}. Wide establishing shot showing the full environment, character is small-to-medium in the frame actively doing something, rich detailed background world, the scene tells the story visually, soft warm lighting, high quality, no text, no watermark."
+
+    payload = {
+        "model": "black-forest-labs/FLUX.1-schnell",
+        "prompt": prompt,
+        "image_size": "768x1024",
+        "num_inference_steps": 4,
+        "seed": 42,
+        "n": 1
+    }
 
     response = requests.post(
         "https://api.ap.siliconflow.com/v1/images/generations",
