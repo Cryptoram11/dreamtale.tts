@@ -159,7 +159,7 @@ def create_illustration(req: IllustrationRequest):
     if not OPENAI_API_KEY:
         raise HTTPException(status_code=500, detail="OpenAI API key not configured")
 
-    # Step 1: Use GPT to expand the scene into a rich cinematic prompt
+    # Step 1: Use GPT to expand the scene into a rich wide cinematic prompt
     headers_openai = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
         "Content-Type": "application/json"
@@ -167,11 +167,15 @@ def create_illustration(req: IllustrationRequest):
 
     expansion_payload = {
         "model": "gpt-4o-mini",
-        "max_tokens": 120,
+        "max_tokens": 100,
         "messages": [
             {
+                "role": "system",
+                "content": "You are a storybook art director. You rewrite short scene descriptions into rich, wide, cinematic illustration prompts. Always describe a VAST environment seen from far away, like a landscape painting. The character must be TINY in the frame — no bigger than 15% of the image. Focus 80% on environment details: trees, sky, buildings, magical elements, weather, lighting, colors, creatures, objects. Only 20% on the character action. Never describe face or close-up details. One sentence only, max 50 words."
+            },
+            {
                 "role": "user",
-                "content": f"Expand this children's storybook scene into a rich cinematic illustration description in exactly one sentence of max 60 words. Focus on the environment, setting, lighting, colors, and what the character is doing. Make it wide and detailed like a movie scene. Do not mention character appearance. Scene: {req.scene}"
+                "content": f"Rewrite this into a wide cinematic storybook scene: {req.scene}"
             }
         ]
     }
@@ -195,7 +199,7 @@ def create_illustration(req: IllustrationRequest):
     else:
         character_desc = f"a {req.age} year old child with big expressive eyes, round face, soft cheeks, cheerful smile"
 
-    prompt = f"Children's storybook illustration, cute cartoon anime style, warm and colorful. Character: {character_desc}. Scene: {expanded_scene}. Wide establishing shot, character small in a large detailed world, rich environment, soft warm lighting, high quality, no text, no watermark."
+    prompt = f"Children's storybook illustration, wide panoramic landscape, cute cartoon anime style. A tiny small {character_desc} seen from far away in a vast world. {expanded_scene}. Environment dominates the frame, character is very small, epic wide angle, rich colors, magical atmosphere, detailed background, soft warm lighting, high quality, no text, no watermark, no close-up, no portrait."
 
     headers_sf = {
         "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
