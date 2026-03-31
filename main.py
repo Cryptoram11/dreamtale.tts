@@ -156,55 +156,17 @@ def create_illustration(req: IllustrationRequest):
     if not SILICONFLOW_API_KEY:
         raise HTTPException(status_code=500, detail="SiliconFlow API key not configured")
 
-    if not OPENAI_API_KEY:
-        raise HTTPException(status_code=500, detail="OpenAI API key not configured")
-
-    # Step 1: Use GPT to expand the scene into a rich wide cinematic prompt
-    headers_openai = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
+    headers = {
+        "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
         "Content-Type": "application/json"
     }
 
-    expansion_payload = {
-        "model": "gpt-4o-mini",
-        "max_tokens": 100,
-        "messages": [
-            {
-                "role": "system",
-                "content": "You are a storybook art director. You rewrite short scene descriptions into rich, wide, cinematic illustration prompts. Always describe a VAST environment seen from far away, like a landscape painting. The character must be TINY in the frame — no bigger than 15% of the image. Focus 80% on environment details: trees, sky, buildings, magical elements, weather, lighting, colors, creatures, objects. Only 20% on the character action. Never describe face or close-up details. One sentence only, max 50 words."
-            },
-            {
-                "role": "user",
-                "content": f"Rewrite this into a wide cinematic storybook scene: {req.scene}"
-            }
-        ]
-    }
-
-    expanded_scene = req.scene
-    try:
-        expansion_response = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers=headers_openai,
-            json=expansion_payload,
-            timeout=15
-        )
-        if expansion_response.status_code == 200:
-            expanded_scene = expansion_response.json()["choices"][0]["message"]["content"].strip()
-    except Exception:
-        expanded_scene = req.scene
-
-    # Step 2: Build illustration prompt
     if req.character_description and req.character_description.strip():
         character_desc = req.character_description.strip()
     else:
         character_desc = f"a {req.age} year old child with big expressive eyes, round face, soft cheeks, cheerful smile"
 
-    prompt = f"Children's storybook illustration, wide panoramic landscape, cute cartoon anime style. A tiny small {character_desc} seen from far away in a vast world. {expanded_scene}. Environment dominates the frame, character is very small, epic wide angle, rich colors, magical atmosphere, detailed background, soft warm lighting, high quality, no text, no watermark, no close-up, no portrait."
-
-    headers_sf = {
-        "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
-        "Content-Type": "application/json"
-    }
+    prompt = f"Children's storybook illustration, wide panoramic scene, cute cartoon anime style, warm and colorful. A small {character_desc} in a vast detailed world. {req.scene}. The environment fills 80% of the image with rich details — trees, sky, magical elements, creatures, buildings, weather, lighting. The child character is small in the frame, naturally placed doing an action. Epic wide angle view like a landscape painting. Soft warm lighting, vibrant colors, high quality, no text, no watermark, no close-up, no portrait, no face focus."
 
     payload = {
         "model": "black-forest-labs/FLUX.1-schnell",
@@ -216,7 +178,7 @@ def create_illustration(req: IllustrationRequest):
 
     response = requests.post(
         "https://api.ap.siliconflow.com/v1/images/generations",
-        headers=headers_sf,
+        headers=headers,
         json=payload,
         timeout=60
     )
