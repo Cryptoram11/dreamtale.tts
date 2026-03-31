@@ -87,8 +87,7 @@ def describe_child(req: DescribeChildRequest):
                     },
                     {
                         "type": "text",
-                        "text": f"Describe this child's appearance in detail for an illustration artist. Include: hair color and style, eye color, skin tone, face shape, and any notable features. Keep it under 50 words. Format: 'a {req.age} year old child with [description]'. Do not include the child's name or any identifying information."
-                    }
+                         "text": f"Describe this child for a cartoon illustrator. Lead with hair FIRST. Format exactly: 'a {req.age} year old child with [HAIR COLOR] [HAIR STYLE] hair, [EYE COLOR] eyes, [SKIN TONE] skin, [FACE SHAPE] face'. Example: 'a 5 year old child with dark brown straight hair, brown eyes, olive skin, round face'. Under 40 words. No name. No extra sentences."                    }
                 ]
             }
         ]
@@ -166,15 +165,15 @@ def create_illustration(req: IllustrationRequest):
     else:
         character_desc = f"a {req.age} year old child with big expressive eyes, round face, soft cheeks, cheerful smile"
 
-    prompt = f"Children's storybook illustration, cute cartoon anime style, warm and colorful. The main character is {character_desc}, named {req.character_name}. The character is {req.scene}. Full body visible, character centered and prominent in the scene, magical colorful background with rich details, soft warm lighting, beautiful environment, high quality illustration, no text, no watermark. Always draw the character with the SAME facial features and hair throughout."
-
+prompt = f"Children's storybook illustration, cute cartoon anime style, warm and colorful. IMPORTANT: character has {character_desc} — keep hair color and style exactly as described. The character's name is {req.character_name}. Scene: {req.character_name} is {req.scene}. Full body visible, character centered and prominent, magical colorful background, soft warm lighting, high quality, no text, no watermark."
     payload = {
-        "model": "black-forest-labs/FLUX.1-schnell",
-        "prompt": prompt,
-        "image_size": "768x1024",
-        "num_inference_steps": 4,
-        "n": 1
-    }
+    "model": "black-forest-labs/FLUX.1-schnell",
+    "prompt": prompt,
+    "image_size": "768x1024",
+    "num_inference_steps": 4,
+    "seed": 42,
+    "n": 1
+}
 
     response = requests.post(
         "https://api.ap.siliconflow.com/v1/images/generations",
