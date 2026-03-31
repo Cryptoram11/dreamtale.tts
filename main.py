@@ -166,14 +166,13 @@ def create_illustration(req: IllustrationRequest):
     else:
         character_desc = f"a {req.age} year old child with big expressive eyes, round face, soft cheeks, cheerful smile"
 
-    prompt = f"Children's storybook illustration, cute cartoon anime style, warm and colorful. IMPORTANT: character has {character_desc} — keep hair color and style exactly as described. The character's name is {req.character_name}. Scene: {req.character_name} is {req.scene}. Wide establishing shot showing the full environment, character is small-to-medium in the frame actively doing something, rich detailed background world, the scene tells the story visually, soft warm lighting, high quality, no text, no watermark."
+    prompt = f"Children's storybook illustration, cute cartoon anime style, warm and colorful. IMPORTANT: character has {character_desc} — keep hair color and style exactly as described. Scene: {req.character_name} is {req.scene}. Wide shot of the full environment, character naturally placed in the scene doing the action, rich detailed world, the background tells the story, soft warm lighting, high quality, no text, no watermark."
 
     payload = {
         "model": "black-forest-labs/FLUX.1-schnell",
         "prompt": prompt,
         "image_size": "768x1024",
         "num_inference_steps": 4,
-        "seed": 42,
         "n": 1
     }
 
