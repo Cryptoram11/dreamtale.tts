@@ -166,7 +166,7 @@ def create_illustration(req: IllustrationRequest):
     else:
         character_desc = f"a {req.age} year old child with big expressive eyes, round face, soft cheeks, cheerful smile"
 
-    prompt = f"Children's storybook illustration, wide panoramic scene, cute cartoon anime style, warm and colorful. A small {character_desc} in a vast detailed world. {req.scene}. The environment fills 80% of the image with rich details — trees, sky, magical elements, creatures, buildings, weather, lighting. The child character is small in the frame, naturally placed doing an action. Epic wide angle view like a landscape painting. Soft warm lighting, vibrant colors, high quality, no text, no watermark, no close-up, no portrait, no face focus."
+    prompt = f"Children's storybook illustration in cute cartoon anime style. COMPOSITION: wide landscape scene, the environment takes up the entire image. Characters are small, placed in the CENTER of the image vertically — not at the top edge, not at the bottom edge. The top 15% of the image is sky or ceiling. The bottom 25% is ground, floor or foreground objects. Characters appear in the middle 60% of the frame. CHARACTER: {character_desc}. SCENE: {req.scene}. STYLE: warm colorful lighting, rich detailed background, vibrant storybook colors, high quality, magical atmosphere. FORBIDDEN: no text, no watermark, no close-up faces, no portrait shots, no characters touching the top or bottom edge of the image."
 
     payload = {
         "model": "black-forest-labs/FLUX.1-schnell",
