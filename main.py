@@ -116,7 +116,7 @@ def tts_stream(req: TTSRequest):
 
     voice_map = {
         "en":  {"languageCode": "en-US",  "name": "en-US-Journey-F"},
-        "ar":  {"languageCode": "ar-XA",  "name": "ar-XA-Chirp3-HD-Charon"},
+        "ar":  {"languageCode": "ar-XA",  "name": "ar-XA-Wavenet-D"},
         "fr":  {"languageCode": "fr-FR",  "name": "fr-FR-Journey-F"},
         "es":  {"languageCode": "es-ES",  "name": "es-ES-Journey-F"},
         "pt":  {"languageCode": "pt-BR",  "name": "pt-BR-Wavenet-A"},
@@ -169,10 +169,9 @@ def create_illustration(req: IllustrationRequest):
     prompt = f"Children's storybook illustration in cute cartoon anime style. COMPOSITION: wide landscape scene, the environment takes up the entire image. Characters are small, placed in the CENTER of the image vertically — not at the top edge, not at the bottom edge. The top 15% of the image is sky or ceiling. The bottom 25% is ground, floor or foreground objects. Characters appear in the middle 60% of the frame. CHARACTER: {character_desc}. SCENE: {req.scene}. STYLE: warm colorful lighting, rich detailed background, vibrant storybook colors, high quality, magical atmosphere. FORBIDDEN: no text, no watermark, no close-up faces, no portrait shots, no characters touching the top or bottom edge of the image."
 
     payload = {
-        "model": "black-forest-labs/FLUX.1-schnell",
+        "model": "black-forest-labs/FLUX.1-Kontext-pro",
         "prompt": prompt,
         "image_size": "768x1024",
-        "num_inference_steps": 4,
         "n": 1
     }
 
