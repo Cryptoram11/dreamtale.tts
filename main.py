@@ -34,6 +34,7 @@ class IllustrationRequest(BaseModel):
     scene: str
     age: int = 6
     character_description: str = ""
+    reference_image_id: str = ""
 
 class DescribeChildRequest(BaseModel):
     photo_url: str
@@ -166,7 +167,13 @@ def create_illustration(req: IllustrationRequest):
     else:
         character_desc = f"a {req.age} year old child with big expressive eyes, round face, soft cheeks, cheerful smile"
 
-    prompt = f"Children's storybook illustration in cute cartoon anime style. COMPOSITION: wide landscape scene, the environment takes up the entire image. Characters are small, placed in the CENTER of the image vertically — not at the top edge, not at the bottom edge. The top 15% of the image is sky or ceiling. The bottom 25% is ground, floor or foreground objects. Characters appear in the middle 60% of the frame. CHARACTER: {character_desc}. SCENE: {req.scene}. STYLE: warm colorful lighting, rich detailed background, vibrant storybook colors, high quality, magical atmosphere. FORBIDDEN: no text, no watermark, no close-up faces, no portrait shots, no characters touching the top or bottom edge of the image."
+    # Build the prompt
+    if req.reference_image_id:
+        # Pages 2+: use reference image for character consistency
+        prompt = f"Keep the same character from the reference image but place them in a new scene. Children's storybook illustration in cute cartoon anime style. The character is {character_desc}. NEW SCENE: {req.scene}. COMPOSITION: wide landscape, character small in the center of the frame, rich detailed environment, warm colorful lighting, vibrant storybook colors, high quality, magical atmosphere. FORBIDDEN: no text, no watermark, no close-up faces, no portrait shots."
+    else:
+        # Page 1: generate character from scratch
+        prompt = f"Children's storybook illustration in cute cartoon anime style. COMPOSITION: wide landscape scene, the environment takes up the entire image. Characters are small, placed in the CENTER of the image vertically — not at the top edge, not at the bottom edge. The top 15% of the image is sky or ceiling. The bottom 25% is ground, floor or foreground objects. Characters appear in the middle 60% of the frame. CHARACTER: {character_desc}. SCENE: {req.scene}. STYLE: warm colorful lighting, rich detailed background, vibrant storybook colors, high quality, magical atmosphere. FORBIDDEN: no text, no watermark, no close-up faces, no portrait shots, no characters touching the top or bottom edge of the image."
 
     payload = {
         "model": "black-forest-labs/FLUX.1-Kontext-pro",
@@ -175,11 +182,18 @@ def create_illustration(req: IllustrationRequest):
         "n": 1
     }
 
+    # If reference image ID is provided, fetch the image and add as input_image
+    if req.reference_image_id and req.reference_image_id in photo_store:
+        ref_image_data = photo_store[req.reference_image_id]["data"]
+        ref_base64 = base64.b64encode(ref_image_data).decode("utf-8")
+        content_type = photo_store[req.reference_image_id].get("content_type", "image/jpeg")
+        payload["input_image"] = f"data:{content_type};base64,{ref_base64}"
+
     response = requests.post(
         "https://api.ap.siliconflow.com/v1/images/generations",
         headers=headers,
         json=payload,
-        timeout=60
+        timeout=120
     )
 
     if response.status_code != 200:
