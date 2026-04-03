@@ -219,7 +219,7 @@ def create_illustration(req: IllustrationRequest):
 
     print(f"[ILLUSTRATION] Character description: {character_desc}")
 
-   prompt = (
+   prompt = {
         f"Children's storybook illustration, cute cartoon style. "
         f"SCENE (most important): {req.scene}. "
         f"The main character in this scene is {character_desc}. "
@@ -228,7 +228,7 @@ def create_illustration(req: IllustrationRequest):
         f"COMPOSITION: wide angle shot, detailed environment filling the entire image, character small in the frame, "
         f"cinematic composition, warm magical lighting, vibrant storybook colors, professional quality. "
         f"FORBIDDEN: no text, no watermark, no letters, no words, no signatures, no character looking directly at camera."
-    )
+    }
 
     print(f"[ILLUSTRATION] Prompt: {prompt[:300]}...")
 
