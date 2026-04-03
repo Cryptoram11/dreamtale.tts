@@ -235,7 +235,7 @@ def create_illustration(req: IllustrationRequest):
     payload = {
         "model": "black-forest-labs/FLUX.1-schnell",
         "prompt": prompt,
-        "image_size": "768x1024",
+        "image_size": "576x1024",
         "num_inference_steps": 4,
         "n": 1
     }
