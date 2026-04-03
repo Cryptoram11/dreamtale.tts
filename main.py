@@ -44,17 +44,65 @@ class DescribeChildRequest(BaseModel):
 def root():
     return {"status": "DreamTale server is running"}
 
-@app.post("/upload-photo")
-async def upload_photo(file: UploadFile = File(...)):
-    contents = await file.read()
-    photo_id = str(uuid.uuid4())
-    photo_store[photo_id] = {
-        "data": contents,
-        "content_type": file.content_type or "image/jpeg"
-    }
-    photo_url = f"https://dreamtale-tts.onrender.com/photo/{photo_id}"
-    return {"photo_url": photo_url, "photo_id": photo_id}
+@app.post("/create-illustration")
+def create_illustration(req: IllustrationRequest):
+    if not SILICONFLOW_API_KEY:
+        raise HTTPException(status_code=500, detail="SiliconFlow API key not configured")
 
+    headers = {
+        "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    if req.character_description and req.character_description.strip():
+        character_desc = req.character_description.strip()
+    else:
+        character_desc = f"a {req.age} year old child with big expressive eyes, round face, soft cheeks, cheerful smile"
+
+    prompt = f"Children's storybook illustration, cute cartoon anime style, wide panoramic landscape scene. {req.scene}. The main character is {character_desc}. Wide angle shot, characters small in a vast detailed environment, rich colorful background, warm magical lighting, vibrant storybook colors, high quality illustration. No text, no watermark, no letters, no words."
+
+    print(f"[ILLUSTRATION] Prompt: {prompt[:200]}...")
+
+    payload = {
+        "model": "black-forest-labs/FLUX.1-schnell",
+        "prompt": prompt,
+        "image_size": "768x1024",
+        "num_inference_steps": 4,
+        "n": 1
+    }
+
+    response = requests.post(
+        "https://api.siliconflow.com/v1/images/generations",
+        headers=headers,
+        json=payload,
+        timeout=120
+    )
+
+    if response.status_code != 200:
+        print(f"[ILLUSTRATION ERROR] {response.status_code}: {response.text}")
+        raise HTTPException(status_code=500, detail=f"SiliconFlow error: {response.text}")
+
+    result = response.json()
+    images = result.get("images", [])
+    if not images:
+        raise HTTPException(status_code=500, detail="No image returned")
+
+    siliconflow_url = images[0].get("url", "")
+    if not siliconflow_url:
+        raise HTTPException(status_code=500, detail="No image URL returned")
+
+    img_response = requests.get(siliconflow_url, timeout=30)
+    if img_response.status_code != 200:
+        raise HTTPException(status_code=500, detail="Failed to fetch image from SiliconFlow")
+
+    img_id = str(uuid.uuid4())
+    photo_store[img_id] = {
+        "data": img_response.content,
+        "content_type": "image/jpeg"
+    }
+    proxied_url = f"https://dreamtale-tts.onrender.com/photo/{img_id}"
+    print(f"[ILLUSTRATION] Success: {proxied_url}")
+    return {"illustration_url": proxied_url}
 @app.get("/photo/{photo_id}")
 def get_photo(photo_id: str):
     if photo_id not in photo_store:
