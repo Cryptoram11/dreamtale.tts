@@ -46,7 +46,6 @@ class DescribeChildRequest(BaseModel):
 def root():
     return {"status": "DreamTale server is running"}
 
-# ─── PHOTO UPLOAD ───────────────────────────────────────────
 @app.post("/upload-photo")
 async def upload_photo(file: UploadFile = File(...)):
     contents = await file.read()
@@ -56,12 +55,9 @@ async def upload_photo(file: UploadFile = File(...)):
         "content_type": file.content_type or "image/jpeg"
     }
     photo_url = f"https://dreamtale-tts.onrender.com/photo/{photo_id}"
-    
-    # Also generate base64 for describe-child
     photo_b64 = base64.b64encode(contents).decode("utf-8")
     content_type = file.content_type or "image/jpeg"
     data_uri = f"data:{content_type};base64,{photo_b64}"
-    
     print(f"[UPLOAD] Photo stored: {photo_id}")
     return {
         "photo_url": photo_url,
@@ -79,13 +75,11 @@ def get_photo(photo_id: str):
         media_type=photo["content_type"]
     )
 
-# ─── DESCRIBE CHILD ────────────────────────────────────────
 @app.post("/describe-child")
 def describe_child(req: DescribeChildRequest):
     if not OPENAI_API_KEY:
         raise HTTPException(status_code=500, detail="OpenAI API key not configured")
 
-    # Determine image source: prefer base64, fall back to URL
     image_content = None
     if req.photo_base64 and req.photo_base64.strip():
         image_content = {
@@ -100,7 +94,7 @@ def describe_child(req: DescribeChildRequest):
         }
         print(f"[DESCRIBE] Using photo URL: {req.photo_url[:80]}...")
     else:
-        raise HTTPException(status_code=400, detail="No photo provided — send photo_base64 or photo_url")
+        raise HTTPException(status_code=400, detail="No photo provided")
 
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
@@ -117,15 +111,7 @@ def describe_child(req: DescribeChildRequest):
                     image_content,
                     {
                         "type": "text",
-                        "text": (
-                            f"Describe this child for a cartoon illustrator who needs to draw them accurately. "
-                            f"The child is {req.age} years old. "
-                            f"Format EXACTLY like this example: "
-                            f"'a 5 year old boy with short black curly hair, dark brown eyes, dark brown skin, round face, wearing a white shirt'. "
-                            f"IMPORTANT: You MUST mention the skin color/tone explicitly (e.g. dark brown skin, light skin, olive skin, tan skin, pale skin). "
-                            f"IMPORTANT: You MUST mention hair color, hair style, eye color, skin tone, and face shape. "
-                            f"Under 40 words. No name. No extra sentences. Just the description."
-                        )
+                        "text": f"Describe this child for a cartoon illustrator who needs to draw them accurately. The child is {req.age} years old. Format EXACTLY like this example: 'a 5 year old boy with short black curly hair, dark brown eyes, dark brown skin, round face, wearing a white shirt'. IMPORTANT: You MUST mention the skin color/tone explicitly (e.g. dark brown skin, light skin, olive skin, tan skin, pale skin). IMPORTANT: You MUST mention hair color, hair style, eye color, skin tone, and face shape. Under 40 words. No name. No extra sentences. Just the description."
                     }
                 ]
             }
@@ -139,11 +125,9 @@ def describe_child(req: DescribeChildRequest):
             json=payload,
             timeout=30
         )
-
         if response.status_code != 200:
             print(f"[DESCRIBE ERROR] OpenAI returned {response.status_code}: {response.text}")
             raise HTTPException(status_code=500, detail=f"OpenAI error: {response.text}")
-
         description = response.json()["choices"][0]["message"]["content"].strip()
         print(f"[DESCRIBE] Result: {description}")
         return {"character_description": description}
@@ -156,7 +140,6 @@ def describe_child(req: DescribeChildRequest):
         print(f"[DESCRIBE ERROR] {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# ─── TTS ────────────────────────────────────────────────────
 @app.post("/tts-stream")
 def tts_stream(req: TTSRequest):
     if not GOOGLE_API_KEY:
@@ -201,7 +184,6 @@ def tts_stream(req: TTSRequest):
         headers={"Content-Disposition": "inline", "Accept-Ranges": "bytes"}
     )
 
-# ─── ILLUSTRATION ───────────────────────────────────────────
 @app.post("/create-illustration")
 def create_illustration(req: IllustrationRequest):
     if not SILICONFLOW_API_KEY:
@@ -219,23 +201,14 @@ def create_illustration(req: IllustrationRequest):
 
     print(f"[ILLUSTRATION] Character description: {character_desc}")
 
-   prompt = {
-        f"Children's storybook illustration, cute cartoon style. "
-        f"SCENE (most important): {req.scene}. "
-        f"The main character in this scene is {character_desc}. "
-        f"The character must be DOING something in the scene — moving, reaching, looking at something, interacting with objects or other characters. "
-        f"NEVER draw the character standing still facing the camera. Show them FROM THE SIDE or FROM BEHIND, engaged in action. "
-        f"COMPOSITION: wide angle shot, detailed environment filling the entire image, character small in the frame, "
-        f"cinematic composition, warm magical lighting, vibrant storybook colors, professional quality. "
-        f"FORBIDDEN: no text, no watermark, no letters, no words, no signatures, no character looking directly at camera."
-    }
+    prompt = f"Children's storybook illustration, cute cartoon style. SCENE (most important): {req.scene}. The main character in this scene is {character_desc}. The character must be DOING something in the scene — moving, reaching, looking at something, interacting with objects or other characters. NEVER draw the character standing still facing the camera. Show them FROM THE SIDE or FROM BEHIND, engaged in action. COMPOSITION: wide angle shot, detailed environment filling the entire image, character small in the frame, cinematic composition, warm magical lighting, vibrant storybook colors, professional quality. FORBIDDEN: no text, no watermark, no letters, no words, no signatures, no character looking directly at camera."
 
     print(f"[ILLUSTRATION] Prompt: {prompt[:300]}...")
 
     payload = {
         "model": "black-forest-labs/FLUX.1-schnell",
         "prompt": prompt,
-        "image_size": "576x1024",
+        "image_size": "768x1024",
         "num_inference_steps": 4,
         "n": 1
     }
@@ -247,24 +220,19 @@ def create_illustration(req: IllustrationRequest):
             json=payload,
             timeout=120
         )
-
         if response.status_code != 200:
             print(f"[ILLUSTRATION ERROR] SiliconFlow returned {response.status_code}: {response.text}")
             raise HTTPException(status_code=500, detail=f"SiliconFlow error: {response.text}")
-
         result = response.json()
         images = result.get("images", [])
         if not images:
             raise HTTPException(status_code=500, detail="No image returned")
-
         siliconflow_url = images[0].get("url", "")
         if not siliconflow_url:
             raise HTTPException(status_code=500, detail="No image URL returned")
-
         img_response = requests.get(siliconflow_url, timeout=30)
         if img_response.status_code != 200:
             raise HTTPException(status_code=500, detail="Failed to fetch image from SiliconFlow")
-
         img_id = str(uuid.uuid4())
         photo_store[img_id] = {
             "data": img_response.content,
