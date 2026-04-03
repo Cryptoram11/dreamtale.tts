@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from typing import Optional
 import requests
 import base64
 import os
@@ -37,13 +38,15 @@ class IllustrationRequest(BaseModel):
     reference_image_id: str = ""
 
 class DescribeChildRequest(BaseModel):
-    photo_url: str
+    photo_url: str = ""
+    photo_base64: str = ""
     age: int = 6
 
 @app.get("/")
 def root():
     return {"status": "DreamTale server is running"}
 
+# ─── PHOTO UPLOAD ───────────────────────────────────────────
 @app.post("/upload-photo")
 async def upload_photo(file: UploadFile = File(...)):
     contents = await file.read()
@@ -53,7 +56,18 @@ async def upload_photo(file: UploadFile = File(...)):
         "content_type": file.content_type or "image/jpeg"
     }
     photo_url = f"https://dreamtale-tts.onrender.com/photo/{photo_id}"
-    return {"photo_url": photo_url, "photo_id": photo_id}
+    
+    # Also generate base64 for describe-child
+    photo_b64 = base64.b64encode(contents).decode("utf-8")
+    content_type = file.content_type or "image/jpeg"
+    data_uri = f"data:{content_type};base64,{photo_b64}"
+    
+    print(f"[UPLOAD] Photo stored: {photo_id}")
+    return {
+        "photo_url": photo_url,
+        "photo_id": photo_id,
+        "photo_base64": data_uri
+    }
 
 @app.get("/photo/{photo_id}")
 def get_photo(photo_id: str):
@@ -65,10 +79,28 @@ def get_photo(photo_id: str):
         media_type=photo["content_type"]
     )
 
+# ─── DESCRIBE CHILD ────────────────────────────────────────
 @app.post("/describe-child")
 def describe_child(req: DescribeChildRequest):
     if not OPENAI_API_KEY:
         raise HTTPException(status_code=500, detail="OpenAI API key not configured")
+
+    # Determine image source: prefer base64, fall back to URL
+    image_content = None
+    if req.photo_base64 and req.photo_base64.strip():
+        image_content = {
+            "type": "image_url",
+            "image_url": {"url": req.photo_base64.strip()}
+        }
+        print("[DESCRIBE] Using base64 image data")
+    elif req.photo_url and req.photo_url.strip():
+        image_content = {
+            "type": "image_url",
+            "image_url": {"url": req.photo_url.strip()}
+        }
+        print(f"[DESCRIBE] Using photo URL: {req.photo_url[:80]}...")
+    else:
+        raise HTTPException(status_code=400, detail="No photo provided — send photo_base64 or photo_url")
 
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
@@ -82,32 +114,49 @@ def describe_child(req: DescribeChildRequest):
             {
                 "role": "user",
                 "content": [
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": req.photo_url}
-                    },
+                    image_content,
                     {
                         "type": "text",
-                        "text": f"Describe this child for a cartoon illustrator. Lead with hair FIRST. Format exactly: 'a {req.age} year old child with [HAIR COLOR] [HAIR STYLE] hair, [EYE COLOR] eyes, [SKIN TONE] skin, [FACE SHAPE] face'. Example: 'a 5 year old child with dark brown straight hair, brown eyes, olive skin, round face'. Under 40 words. No name. No extra sentences."
+                        "text": (
+                            f"Describe this child for a cartoon illustrator who needs to draw them accurately. "
+                            f"The child is {req.age} years old. "
+                            f"Format EXACTLY like this example: "
+                            f"'a 5 year old boy with short black curly hair, dark brown eyes, dark brown skin, round face, wearing a white shirt'. "
+                            f"IMPORTANT: You MUST mention the skin color/tone explicitly (e.g. dark brown skin, light skin, olive skin, tan skin, pale skin). "
+                            f"IMPORTANT: You MUST mention hair color, hair style, eye color, skin tone, and face shape. "
+                            f"Under 40 words. No name. No extra sentences. Just the description."
+                        )
                     }
                 ]
             }
         ]
     }
 
-    response = requests.post(
-        "https://api.openai.com/v1/chat/completions",
-        headers=headers,
-        json=payload,
-        timeout=30
-    )
+    try:
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
 
-    if response.status_code != 200:
-        raise HTTPException(status_code=500, detail=f"OpenAI error: {response.text}")
+        if response.status_code != 200:
+            print(f"[DESCRIBE ERROR] OpenAI returned {response.status_code}: {response.text}")
+            raise HTTPException(status_code=500, detail=f"OpenAI error: {response.text}")
 
-    description = response.json()["choices"][0]["message"]["content"].strip()
-    return {"character_description": description}
+        description = response.json()["choices"][0]["message"]["content"].strip()
+        print(f"[DESCRIBE] Result: {description}")
+        return {"character_description": description}
+    except requests.exceptions.Timeout:
+        print("[DESCRIBE ERROR] OpenAI request timed out")
+        raise HTTPException(status_code=500, detail="OpenAI request timed out")
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[DESCRIBE ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
+# ─── TTS ────────────────────────────────────────────────────
 @app.post("/tts-stream")
 def tts_stream(req: TTSRequest):
     if not GOOGLE_API_KEY:
@@ -152,6 +201,7 @@ def tts_stream(req: TTSRequest):
         headers={"Content-Disposition": "inline", "Accept-Ranges": "bytes"}
     )
 
+# ─── ILLUSTRATION ───────────────────────────────────────────
 @app.post("/create-illustration")
 def create_illustration(req: IllustrationRequest):
     if not SILICONFLOW_API_KEY:
@@ -167,9 +217,20 @@ def create_illustration(req: IllustrationRequest):
     else:
         character_desc = f"a {req.age} year old child with big expressive eyes, round face, soft cheeks, cheerful smile"
 
-    prompt = f"Children's storybook illustration, cute cartoon anime style, wide panoramic landscape scene. {req.scene}. The main character is {character_desc}. Wide angle shot, characters small in a vast detailed environment, rich colorful background, warm magical lighting, vibrant storybook colors, high quality illustration. No text, no watermark, no letters, no words."
+    print(f"[ILLUSTRATION] Character description: {character_desc}")
 
-    print(f"[ILLUSTRATION] Prompt: {prompt[:200]}...")
+    prompt = (
+        f"Children's storybook illustration, cute cartoon style. "
+        f"MAIN CHARACTER (draw exactly as described): {character_desc}. "
+        f"SCENE: {req.scene}. "
+        f"COMPOSITION: ultra wide angle shot from far away, tiny characters in a massive sprawling environment, "
+        f"extremely detailed background with many small objects and textures, lush rich scenery filling every corner, "
+        f"cinematic composition, warm magical golden hour lighting, vibrant saturated storybook colors, "
+        f"professional quality illustration. "
+        f"FORBIDDEN: no text, no watermark, no letters, no words, no signatures."
+    )
+
+    print(f"[ILLUSTRATION] Prompt: {prompt[:300]}...")
 
     payload = {
         "model": "black-forest-labs/FLUX.1-schnell",
@@ -179,35 +240,44 @@ def create_illustration(req: IllustrationRequest):
         "n": 1
     }
 
-    response = requests.post(
-        "https://api.siliconflow.com/v1/images/generations",
-        headers=headers,
-        json=payload,
-        timeout=120
-    )
+    try:
+        response = requests.post(
+            "https://api.siliconflow.com/v1/images/generations",
+            headers=headers,
+            json=payload,
+            timeout=120
+        )
 
-    if response.status_code != 200:
-        print(f"[ILLUSTRATION ERROR] {response.status_code}: {response.text}")
-        raise HTTPException(status_code=500, detail=f"SiliconFlow error: {response.text}")
+        if response.status_code != 200:
+            print(f"[ILLUSTRATION ERROR] SiliconFlow returned {response.status_code}: {response.text}")
+            raise HTTPException(status_code=500, detail=f"SiliconFlow error: {response.text}")
 
-    result = response.json()
-    images = result.get("images", [])
-    if not images:
-        raise HTTPException(status_code=500, detail="No image returned")
+        result = response.json()
+        images = result.get("images", [])
+        if not images:
+            raise HTTPException(status_code=500, detail="No image returned")
 
-    siliconflow_url = images[0].get("url", "")
-    if not siliconflow_url:
-        raise HTTPException(status_code=500, detail="No image URL returned")
+        siliconflow_url = images[0].get("url", "")
+        if not siliconflow_url:
+            raise HTTPException(status_code=500, detail="No image URL returned")
 
-    img_response = requests.get(siliconflow_url, timeout=30)
-    if img_response.status_code != 200:
-        raise HTTPException(status_code=500, detail="Failed to fetch image from SiliconFlow")
+        img_response = requests.get(siliconflow_url, timeout=30)
+        if img_response.status_code != 200:
+            raise HTTPException(status_code=500, detail="Failed to fetch image from SiliconFlow")
 
-    img_id = str(uuid.uuid4())
-    photo_store[img_id] = {
-        "data": img_response.content,
-        "content_type": "image/jpeg"
-    }
-    proxied_url = f"https://dreamtale-tts.onrender.com/photo/{img_id}"
-    print(f"[ILLUSTRATION] Success: {proxied_url}")
-    return {"illustration_url": proxied_url}
+        img_id = str(uuid.uuid4())
+        photo_store[img_id] = {
+            "data": img_response.content,
+            "content_type": "image/jpeg"
+        }
+        proxied_url = f"https://dreamtale-tts.onrender.com/photo/{img_id}"
+        print(f"[ILLUSTRATION] Success: {proxied_url}")
+        return {"illustration_url": proxied_url}
+    except requests.exceptions.Timeout:
+        print("[ILLUSTRATION ERROR] SiliconFlow request timed out")
+        raise HTTPException(status_code=500, detail="Image generation timed out")
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[ILLUSTRATION ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
