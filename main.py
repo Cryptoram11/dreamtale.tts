@@ -44,65 +44,17 @@ class DescribeChildRequest(BaseModel):
 def root():
     return {"status": "DreamTale server is running"}
 
-@app.post("/create-illustration")
-def create_illustration(req: IllustrationRequest):
-    if not SILICONFLOW_API_KEY:
-        raise HTTPException(status_code=500, detail="SiliconFlow API key not configured")
-
-    headers = {
-        "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
-        "Content-Type": "application/json"
+@app.post("/upload-photo")
+async def upload_photo(file: UploadFile = File(...)):
+    contents = await file.read()
+    photo_id = str(uuid.uuid4())
+    photo_store[photo_id] = {
+        "data": contents,
+        "content_type": file.content_type or "image/jpeg"
     }
+    photo_url = f"https://dreamtale-tts.onrender.com/photo/{photo_id}"
+    return {"photo_url": photo_url, "photo_id": photo_id}
 
-    if req.character_description and req.character_description.strip():
-        character_desc = req.character_description.strip()
-    else:
-        character_desc = f"a {req.age} year old child with big expressive eyes, round face, soft cheeks, cheerful smile"
-
-    prompt = f"Children's storybook illustration, cute cartoon anime style, wide panoramic landscape scene. {req.scene}. The main character is {character_desc}. Wide angle shot, characters small in a vast detailed environment, rich colorful background, warm magical lighting, vibrant storybook colors, high quality illustration. No text, no watermark, no letters, no words."
-
-    print(f"[ILLUSTRATION] Prompt: {prompt[:200]}...")
-
-    payload = {
-        "model": "black-forest-labs/FLUX.1-schnell",
-        "prompt": prompt,
-        "image_size": "768x1024",
-        "num_inference_steps": 4,
-        "n": 1
-    }
-
-    response = requests.post(
-        "https://api.siliconflow.com/v1/images/generations",
-        headers=headers,
-        json=payload,
-        timeout=120
-    )
-
-    if response.status_code != 200:
-        print(f"[ILLUSTRATION ERROR] {response.status_code}: {response.text}")
-        raise HTTPException(status_code=500, detail=f"SiliconFlow error: {response.text}")
-
-    result = response.json()
-    images = result.get("images", [])
-    if not images:
-        raise HTTPException(status_code=500, detail="No image returned")
-
-    siliconflow_url = images[0].get("url", "")
-    if not siliconflow_url:
-        raise HTTPException(status_code=500, detail="No image URL returned")
-
-    img_response = requests.get(siliconflow_url, timeout=30)
-    if img_response.status_code != 200:
-        raise HTTPException(status_code=500, detail="Failed to fetch image from SiliconFlow")
-
-    img_id = str(uuid.uuid4())
-    photo_store[img_id] = {
-        "data": img_response.content,
-        "content_type": "image/jpeg"
-    }
-    proxied_url = f"https://dreamtale-tts.onrender.com/photo/{img_id}"
-    print(f"[ILLUSTRATION] Success: {proxied_url}")
-    return {"illustration_url": proxied_url}
 @app.get("/photo/{photo_id}")
 def get_photo(photo_id: str):
     if photo_id not in photo_store:
@@ -215,36 +167,27 @@ def create_illustration(req: IllustrationRequest):
     else:
         character_desc = f"a {req.age} year old child with big expressive eyes, round face, soft cheeks, cheerful smile"
 
-    # Build the prompt
-    if req.reference_image_id:
-        # Pages 2+: use reference image for character consistency
-        prompt = f"Keep the same character from the reference image but place them in a new scene. Children's storybook illustration in cute cartoon anime style. The character is {character_desc}. NEW SCENE: {req.scene}. COMPOSITION: wide landscape, character small in the center of the frame, rich detailed environment, warm colorful lighting, vibrant storybook colors, high quality, magical atmosphere. FORBIDDEN: no text, no watermark, no close-up faces, no portrait shots."
-    else:
-        # Page 1: generate character from scratch
-        prompt = f"Children's storybook illustration in cute cartoon anime style. COMPOSITION: wide landscape scene, the environment takes up the entire image. Characters are small, placed in the CENTER of the image vertically — not at the top edge, not at the bottom edge. The top 15% of the image is sky or ceiling. The bottom 25% is ground, floor or foreground objects. Characters appear in the middle 60% of the frame. CHARACTER: {character_desc}. SCENE: {req.scene}. STYLE: warm colorful lighting, rich detailed background, vibrant storybook colors, high quality, magical atmosphere. FORBIDDEN: no text, no watermark, no close-up faces, no portrait shots, no characters touching the top or bottom edge of the image."
+    prompt = f"Children's storybook illustration, cute cartoon anime style, wide panoramic landscape scene. {req.scene}. The main character is {character_desc}. Wide angle shot, characters small in a vast detailed environment, rich colorful background, warm magical lighting, vibrant storybook colors, high quality illustration. No text, no watermark, no letters, no words."
+
+    print(f"[ILLUSTRATION] Prompt: {prompt[:200]}...")
 
     payload = {
-        "model": "black-forest-labs/FLUX.1-Kontext-pro",
+        "model": "black-forest-labs/FLUX.1-schnell",
         "prompt": prompt,
         "image_size": "768x1024",
+        "num_inference_steps": 4,
         "n": 1
     }
 
-    # If reference image ID is provided, fetch the image and add as input_image
-    if req.reference_image_id and req.reference_image_id in photo_store:
-        ref_image_data = photo_store[req.reference_image_id]["data"]
-        ref_base64 = base64.b64encode(ref_image_data).decode("utf-8")
-        content_type = photo_store[req.reference_image_id].get("content_type", "image/jpeg")
-        payload["input_image"] = f"data:{content_type};base64,{ref_base64}"
-
     response = requests.post(
-        "https://api.ap.siliconflow.com/v1/images/generations",
+        "https://api.siliconflow.com/v1/images/generations",
         headers=headers,
         json=payload,
         timeout=120
     )
 
     if response.status_code != 200:
+        print(f"[ILLUSTRATION ERROR] {response.status_code}: {response.text}")
         raise HTTPException(status_code=500, detail=f"SiliconFlow error: {response.text}")
 
     result = response.json()
@@ -266,4 +209,5 @@ def create_illustration(req: IllustrationRequest):
         "content_type": "image/jpeg"
     }
     proxied_url = f"https://dreamtale-tts.onrender.com/photo/{img_id}"
+    print(f"[ILLUSTRATION] Success: {proxied_url}")
     return {"illustration_url": proxied_url}
