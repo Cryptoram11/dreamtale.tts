@@ -201,7 +201,10 @@ def create_illustration(req: IllustrationRequest):
 
     print(f"[ILLUSTRATION] Character description: {character_desc}")
 
-    prompt = f"A wide establishing shot of a children's storybook scene, seen from far away. {req.scene}. Small figures of {character_desc} can be seen in the distance. Detailed environment fills the entire frame, warm golden lighting, vibrant watercolor storybook colors."
+    import re
+    clean_scene = re.sub(r'[A-Z][a-z]+,?\s*(?:a\s+)?\d+-year-old\s+\w+[^.]*\.?', '', req.scene)
+    clean_scene = re.sub(r'\s+', ' ', clean_scene).strip()
+    prompt = f"A wide establishing shot of a children's storybook scene, seen from far away. {clean_scene}. Detailed environment fills the entire frame, warm golden lighting, vibrant watercolor storybook colors. Small distant figures of {character_desc} are somewhere in the scene."
 
     print(f"[ILLUSTRATION] Prompt: {prompt[:300]}...")
 
