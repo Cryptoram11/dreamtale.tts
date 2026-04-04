@@ -201,7 +201,7 @@ def create_illustration(req: IllustrationRequest):
 
     print(f"[ILLUSTRATION] Character description: {character_desc}")
 
-   prompt = f"A wide establishing shot of a children's storybook scene, seen from far away. {req.scene}. Small figures of {character_desc} can be seen in the distance. Detailed environment fills the entire frame, bird's eye perspective, warm golden lighting, vibrant watercolor storybook colors."
+    prompt = f"A wide establishing shot of a children's storybook scene, seen from far away. {req.scene}. Small figures of {character_desc} can be seen in the distance. Detailed environment fills the entire frame, bird's eye perspective, warm golden lighting, vibrant watercolor storybook colors."
 
     print(f"[ILLUSTRATION] Prompt: {prompt[:300]}...")
 
