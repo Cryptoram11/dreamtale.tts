@@ -205,23 +205,20 @@ def create_illustration(req: IllustrationRequest):
     # Sentence-level filter: drop any sentence that mentions a person or person-action.
     # This preserves grammar on the surviving sentences — FLUX needs readable English,
     # not shredded fragments from word-level stripping.
-    character_markers = re.compile(
+    person_markers = re.compile(
         r'\b('
         r'\d+[-\s]?year[-\s]?old|'
         r'year\s*old|'
         r'boy|boys|girl|girls|child|children|kid|kids|toddler|toddlers|baby|babies|'
+        r'person|people|figure|figures|hero|heroes|'
         r'he|she|they|him|her|them|his|hers|their|theirs|'
-        r'wearing|hair|eyes|skin|face|'
-        r'kneel|crouch|lean|reach|hold|grasp|clutch|hug|grip|peek|peer|'
-        r'sit|sits|sitting|lie|lies|lying|lay|stand|stands|standing|'
-        r'walk|walks|walking|run|runs|running|jump|jumps|jumping|'
-        r'climb|climbs|climbing|head|heads|heading|ran|walked|looked'
+        r'wearing|hair|eyes|skin|face'
         r')\b',
         flags=re.IGNORECASE
     )
 
     sentences = re.split(r'(?<=[.!?])\s+', scene_text)
-    clean_sentences = [s for s in sentences if s.strip() and not character_markers.search(s)]
+    clean_sentences = [s for s in sentences if s.strip() and not person_markers.search(s)]
     scene_text = ' '.join(clean_sentences).strip()
 
     # Safety fallback — if GPT's scene was entirely character-focused and nothing
