@@ -232,14 +232,14 @@ def create_illustration(req: IllustrationRequest):
     # Hardcoded wide-shot template. GPT's cleaned scene only fills the Environment slot.
     # No character_description injection — generic "small child figure" only.
     prompt = (
-       f"Storybook illustration, medium shot. "
-       f"Environment: {scene_text}. "
-       f"A child is clearly visible in the middle of the scene, taking up about one third of the frame height, with their full body shown from head to feet. "
-       f"The environment is still visible around and behind the child, showing the setting clearly. "
-       f"Warm golden lighting, vibrant watercolor storybook colors, picture book illustration style. "
-       f"Eye-level camera, balanced framing."
-    )
-
+      f"Wide storybook illustration, full environment visible. "
+      f"Environment: {scene_text}. "
+      f"A small child figure is visible in the scene, about one fifth of the frame height, full body from head to feet, shown from a distance so the whole setting is clearly visible around them. "
+      f"The environment fills most of the frame with rich detail. "
+      f"Warm golden lighting, vibrant watercolor storybook colors, picture book illustration style. "
+      f"Eye-level wide angle, camera pulled back, character small in a big scene."
+    }
+        
     print(f"[ILLUSTRATION] Final prompt: {prompt[:400]}...")
 
     payload = {
