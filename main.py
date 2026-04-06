@@ -194,15 +194,13 @@ def create_illustration(req: IllustrationRequest):
         "Content-Type": "application/json"
     }
 
-    if req.character_description and req.character_description.strip():
-        character_desc = req.character_description.strip()
-    else:
-        character_desc = f"a {req.age} year old child"
+    # CHANGE 1: character_description is IGNORED for wide shots.
+    # For Option 1 (wide shots everywhere), we never inject appearance details into the prompt.
+    # Character recognizability comes from Kontext-pro reference image on pages 2+, not from text.
+    # We keep the field in the request so the rest of the app doesn't break, but we don't use it here.
+    print(f"[ILLUSTRATION] Character description received (ignored for wide shots): {req.character_description[:80] if req.character_description else 'none'}")
 
-    print(f"[ILLUSTRATION] Character description: {character_desc}")
-
-    # Aggressively strip anything that looks like a character reference from GPT's scene text.
-    # We only want environment, setting, lighting, atmosphere — NOT people.
+    # Strip anything that looks like a character reference from GPT's scene text.
     import re
     scene_text = req.scene or ""
 
@@ -210,24 +208,42 @@ def create_illustration(req: IllustrationRequest):
     scene_text = re.sub(r'[A-Z][a-z]+,?\s*(?:a\s+)?\d+[-\s]?year[-\s]?old[^.,]*[.,]?', '', scene_text)
     # Remove "a X year old boy/girl/child wearing ..." patterns
     scene_text = re.sub(r'a\s+\d+[-\s]?year[-\s]?old\s+(?:boy|girl|child|kid)[^.,]*[.,]?', '', scene_text, flags=re.IGNORECASE)
-    # Remove explicit clothing / hair / eye descriptors that anchor close-ups
+    # Remove explicit clothing / hair / eye descriptors
     scene_text = re.sub(r'(?:wearing|with\s+(?:short|long|curly|straight|brown|black|blonde|red))\s+[^.,]*[.,]?', '', scene_text, flags=re.IGNORECASE)
-    # Remove close-up action verbs that force tight framing
-    scene_text = re.sub(r'\b(?:kneeling|crouching|leaning|bending|reaching for|holding|grasping|clutching)\s+[^.,]*[.,]?', '', scene_text, flags=re.IGNORECASE)
-    # Collapse whitespace
+
+    # CHANGE 2: close-up action verbs now match both -ing and -s forms.
+    # Old regex only caught "kneeling", missed "kneels". This catches both + a lot more.
+    close_up_verbs = (
+        r'\b(?:'
+        r'kneel(?:s|ing|ed)?|crouch(?:es|ing|ed)?|lean(?:s|ing|ed)?|bend(?:s|ing)?|'
+        r'reach(?:es|ing|ed)?|hold(?:s|ing)?|grasp(?:s|ing|ed)?|clutch(?:es|ing|ed)?|'
+        r'hug(?:s|ging|ged)?|grip(?:s|ping|ped)?|touch(?:es|ing|ed)?|peek(?:s|ing|ed)?|'
+        r'sit(?:s|ting)?|lie(?:s)?|lying|lay(?:s|ing)?|stand(?:s|ing)?'
+        r')\s+[^.,]*[.,]?'
+    )
+    scene_text = re.sub(close_up_verbs, '', scene_text, flags=re.IGNORECASE)
+
+    # Remove stray names at the start ("Roy, ..." after other strips)
+    scene_text = re.sub(r'^[A-Z][a-z]+,?\s*', '', scene_text)
+    # Remove common subject pronouns that may be left dangling
+    scene_text = re.sub(r'\b(?:he|she|they|the boy|the girl|the child|the children|the kid|the kids)\s+', '', scene_text, flags=re.IGNORECASE)
+    # Collapse whitespace and stray punctuation
     scene_text = re.sub(r'\s+', ' ', scene_text).strip()
-    # If we stripped too much, fall back to a generic setting
-    if len(scene_text) < 20:
+    scene_text = re.sub(r'^[,\.\s]+', '', scene_text)
+
+    # If we stripped too much, fall back to a generic setting hint
+    if len(scene_text) < 15:
         scene_text = "a detailed storybook environment"
 
-    # Hardcoded wide-shot template. GPT's cleaned scene only fills in the environment.
+    # CHANGE 3: generic "small child" instead of character_description.
+    # This is the whole point of Option 1 — no appearance anchor for FLUX to latch onto.
     prompt = (
-        f"Wide establishing shot of a children's storybook scene, viewed from far away. "
+        f"Wide establishing shot of a children's storybook scene, viewed from very far away. "
         f"Environment: {scene_text}. "
-        f"Tiny distant figures of {character_desc} visible somewhere in the scene, small in the frame. "
+        f"A tiny small child figure visible in the distance, very small in the frame, barely larger than a thumbnail. "
         f"The environment fills the entire frame, vast and detailed. "
         f"Warm golden lighting, vibrant watercolor storybook colors, picture book illustration style. "
-        f"Panoramic wide angle, camera far from subject, long shot composition."
+        f"Extreme wide angle, camera far from subject, long shot composition, aerial perspective."
     )
 
     print(f"[ILLUSTRATION] Final prompt: {prompt[:400]}...")
@@ -276,3 +292,4 @@ def create_illustration(req: IllustrationRequest):
     except Exception as e:
         print(f"[ILLUSTRATION ERROR] {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+        
