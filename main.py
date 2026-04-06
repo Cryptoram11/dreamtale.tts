@@ -8,6 +8,7 @@ import base64
 import os
 import io
 import uuid
+import re
 
 app = FastAPI()
 
@@ -194,49 +195,42 @@ def create_illustration(req: IllustrationRequest):
         "Content-Type": "application/json"
     }
 
-    # CHANGE 1: character_description is IGNORED for wide shots.
-    # For Option 1 (wide shots everywhere), we never inject appearance details into the prompt.
-    # Character recognizability comes from Kontext-pro reference image on pages 2+, not from text.
-    # We keep the field in the request so the rest of the app doesn't break, but we don't use it here.
+    # character_description is intentionally ignored for wide shots.
+    # Option 1 strategy: no appearance anchor in the text prompt. Character consistency
+    # will come from Kontext-pro reference image wiring on pages 2+ (future work).
     print(f"[ILLUSTRATION] Character description received (ignored for wide shots): {req.character_description[:80] if req.character_description else 'none'}")
 
-    # Strip anything that looks like a character reference from GPT's scene text.
-    import re
     scene_text = req.scene or ""
 
-    # Remove "Name, a X-year-old ..." patterns
-    scene_text = re.sub(r'[A-Z][a-z]+,?\s*(?:a\s+)?\d+[-\s]?year[-\s]?old[^.,]*[.,]?', '', scene_text)
-    # Remove "a X year old boy/girl/child wearing ..." patterns
-    scene_text = re.sub(r'a\s+\d+[-\s]?year[-\s]?old\s+(?:boy|girl|child|kid)[^.,]*[.,]?', '', scene_text, flags=re.IGNORECASE)
-    # Remove explicit clothing / hair / eye descriptors
-    scene_text = re.sub(r'(?:wearing|with\s+(?:short|long|curly|straight|brown|black|blonde|red))\s+[^.,]*[.,]?', '', scene_text, flags=re.IGNORECASE)
-
-    # CHANGE 2: close-up action verbs now match both -ing and -s forms.
-    # Old regex only caught "kneeling", missed "kneels". This catches both + a lot more.
-    close_up_verbs = (
-        r'\b(?:'
-        r'kneel(?:s|ing|ed)?|crouch(?:es|ing|ed)?|lean(?:s|ing|ed)?|bend(?:s|ing)?|'
-        r'reach(?:es|ing|ed)?|hold(?:s|ing)?|grasp(?:s|ing|ed)?|clutch(?:es|ing|ed)?|'
-        r'hug(?:s|ging|ged)?|grip(?:s|ping|ped)?|touch(?:es|ing|ed)?|peek(?:s|ing|ed)?|'
-        r'sit(?:s|ting)?|lie(?:s)?|lying|lay(?:s|ing)?|stand(?:s|ing)?'
-        r')\s+[^.,]*[.,]?'
+    # Sentence-level filter: drop any sentence that mentions a person or person-action.
+    # This preserves grammar on the surviving sentences — FLUX needs readable English,
+    # not shredded fragments from word-level stripping.
+    character_markers = re.compile(
+        r'\b('
+        r'\d+[-\s]?year[-\s]?old|'
+        r'year\s*old|'
+        r'boy|boys|girl|girls|child|children|kid|kids|toddler|toddlers|baby|babies|'
+        r'he|she|they|him|her|them|his|hers|their|theirs|'
+        r'wearing|hair|eyes|skin|face|'
+        r'kneel|crouch|lean|reach|hold|grasp|clutch|hug|grip|peek|peer|'
+        r'sit|sits|sitting|lie|lies|lying|lay|stand|stands|standing|'
+        r'walk|walks|walking|run|runs|running|jump|jumps|jumping|'
+        r'climb|climbs|climbing|head|heads|heading|ran|walked|looked'
+        r')\b',
+        flags=re.IGNORECASE
     )
-    scene_text = re.sub(close_up_verbs, '', scene_text, flags=re.IGNORECASE)
 
-    # Remove stray names at the start ("Roy, ..." after other strips)
-    scene_text = re.sub(r'^[A-Z][a-z]+,?\s*', '', scene_text)
-    # Remove common subject pronouns that may be left dangling
-    scene_text = re.sub(r'\b(?:he|she|they|the boy|the girl|the child|the children|the kid|the kids)\s+', '', scene_text, flags=re.IGNORECASE)
-    # Collapse whitespace and stray punctuation
-    scene_text = re.sub(r'\s+', ' ', scene_text).strip()
-    scene_text = re.sub(r'^[,\.\s]+', '', scene_text)
+    sentences = re.split(r'(?<=[.!?])\s+', scene_text)
+    clean_sentences = [s for s in sentences if s.strip() and not character_markers.search(s)]
+    scene_text = ' '.join(clean_sentences).strip()
 
-    # If we stripped too much, fall back to a generic setting hint
-    if len(scene_text) < 15:
-        scene_text = "a detailed storybook environment"
+    # Safety fallback — if GPT's scene was entirely character-focused and nothing
+    # survived the filter, use a generic landscape cue so FLUX doesn't hallucinate wildly.
+    if len(scene_text) < 20:
+        scene_text = "a vast detailed storybook landscape with rich environmental detail"
 
-    # CHANGE 3: generic "small child" instead of character_description.
-    # This is the whole point of Option 1 — no appearance anchor for FLUX to latch onto.
+    # Hardcoded wide-shot template. GPT's cleaned scene only fills the Environment slot.
+    # No character_description injection — generic "small child figure" only.
     prompt = (
         f"Wide establishing shot of a children's storybook scene, viewed from very far away. "
         f"Environment: {scene_text}. "
@@ -292,4 +286,3 @@ def create_illustration(req: IllustrationRequest):
     except Exception as e:
         print(f"[ILLUSTRATION ERROR] {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-        
