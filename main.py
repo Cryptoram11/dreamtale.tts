@@ -197,16 +197,40 @@ def create_illustration(req: IllustrationRequest):
     if req.character_description and req.character_description.strip():
         character_desc = req.character_description.strip()
     else:
-        character_desc = f"a {req.age} year old child with big expressive eyes, round face, soft cheeks, cheerful smile"
+        character_desc = f"a {req.age} year old child"
 
     print(f"[ILLUSTRATION] Character description: {character_desc}")
 
+    # Aggressively strip anything that looks like a character reference from GPT's scene text.
+    # We only want environment, setting, lighting, atmosphere — NOT people.
     import re
-    clean_scene = re.sub(r'[A-Z][a-z]+,?\s*(?:a\s+)?\d+-year-old\s+\w+[^.]*\.?', '', req.scene)
-    clean_scene = re.sub(r'\s+', ' ', clean_scene).strip()
-    prompt = f"A wide establishing shot of a children's storybook scene, seen from far away. {clean_scene}. Detailed environment fills the entire frame, warm golden lighting, vibrant watercolor storybook colors. Small distant figures of {character_desc} are somewhere in the scene."
+    scene_text = req.scene or ""
 
-    print(f"[ILLUSTRATION] Prompt: {prompt[:300]}...")
+    # Remove "Name, a X-year-old ..." patterns
+    scene_text = re.sub(r'[A-Z][a-z]+,?\s*(?:a\s+)?\d+[-\s]?year[-\s]?old[^.,]*[.,]?', '', scene_text)
+    # Remove "a X year old boy/girl/child wearing ..." patterns
+    scene_text = re.sub(r'a\s+\d+[-\s]?year[-\s]?old\s+(?:boy|girl|child|kid)[^.,]*[.,]?', '', scene_text, flags=re.IGNORECASE)
+    # Remove explicit clothing / hair / eye descriptors that anchor close-ups
+    scene_text = re.sub(r'(?:wearing|with\s+(?:short|long|curly|straight|brown|black|blonde|red))\s+[^.,]*[.,]?', '', scene_text, flags=re.IGNORECASE)
+    # Remove close-up action verbs that force tight framing
+    scene_text = re.sub(r'\b(?:kneeling|crouching|leaning|bending|reaching for|holding|grasping|clutching)\s+[^.,]*[.,]?', '', scene_text, flags=re.IGNORECASE)
+    # Collapse whitespace
+    scene_text = re.sub(r'\s+', ' ', scene_text).strip()
+    # If we stripped too much, fall back to a generic setting
+    if len(scene_text) < 20:
+        scene_text = "a detailed storybook environment"
+
+    # Hardcoded wide-shot template. GPT's cleaned scene only fills in the environment.
+    prompt = (
+        f"Wide establishing shot of a children's storybook scene, viewed from far away. "
+        f"Environment: {scene_text}. "
+        f"Tiny distant figures of {character_desc} visible somewhere in the scene, small in the frame. "
+        f"The environment fills the entire frame, vast and detailed. "
+        f"Warm golden lighting, vibrant watercolor storybook colors, picture book illustration style. "
+        f"Panoramic wide angle, camera far from subject, long shot composition."
+    )
+
+    print(f"[ILLUSTRATION] Final prompt: {prompt[:400]}...")
 
     payload = {
         "model": "black-forest-labs/FLUX.1-schnell",
