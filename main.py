@@ -238,7 +238,7 @@ def create_illustration(req: IllustrationRequest):
       f"The environment fills most of the frame with rich detail. "
       f"Warm golden lighting, vibrant watercolor storybook colors, picture book illustration style. "
       f"Eye-level wide angle, camera pulled back, character small in a big scene."
-    }
+    )
         
     print(f"[ILLUSTRATION] Final prompt: {prompt[:400]}...")
 
