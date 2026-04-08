@@ -232,8 +232,7 @@ def create_illustration(req: IllustrationRequest):
     if req.shot_type == "hero":
         prompt = (
             f"Hand-painted watercolor children's storybook illustration, hero shot. "
-            f"A young child is the main focus, shown from chest-up or full body, taking up about half the frame, face clearly visible with big expressive eyes, soft rosy cheeks, friendly smile. "
-            f"Background environment: {scene_text}. "
+            f"A young child standing or sitting naturally in the scene, framed from the knees up, taking up the middle third of the frame vertically, the child's head in the upper portion of the frame, shoulders and upper body visible, plenty of environment visible above the head and to the sides. "            f"Background environment: {scene_text}. "
             f"The environment is visible behind the child, soft and slightly out of focus, supporting the character. "
             f"Hand-painted watercolor in classic children's picture book style, soft brushstrokes, painted textures, warm cozy colors, gentle lighting. "
             f"NOT photo-realistic, NOT 3D rendered, NOT CGI. "
