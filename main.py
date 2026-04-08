@@ -249,6 +249,7 @@ def create_illustration(req: IllustrationRequest):
             f"NOT photo-realistic, NOT 3D rendered, NOT CGI. "
             f"Eye-level wide angle, camera pulled back, character small in a big scene."
         )
+    print(f"[ILLUSTRATION] Final prompt: {prompt}")
 
     payload = {
         "model": "black-forest-labs/FLUX.1-schnell",
