@@ -233,7 +233,8 @@ def create_illustration(req: IllustrationRequest):
       f"Environment: {scene_text}. "
       f"A small child figure is visible in the scene, about one fifth of the frame height, full body from head to feet, shown from a distance so the whole setting is clearly visible around them. "
       f"The environment fills most of the frame with rich detail. "
-      f"Warm golden lighting, vibrant watercolor storybook colors, picture book illustration style. "
+      f"Hand-painted watercolor illustration in classic children's picture book style, like a published storybook. "
+      f"Soft brushstrokes, painted textures, warm colors, NOT photo-realistic, NOT 3D rendered, NOT CGI. "
       f"Eye-level wide angle, camera pulled back, character small in a big scene."
     )
         
