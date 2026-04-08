@@ -37,6 +37,7 @@ class IllustrationRequest(BaseModel):
     age: int = 6
     character_description: str = ""
     reference_image_id: str = ""
+    shot_type: str = "wide"
 
 class DescribeChildRequest(BaseModel):
     photo_url: str = ""
@@ -228,25 +229,26 @@ def create_illustration(req: IllustrationRequest):
 
     # Hardcoded wide-shot template. GPT's cleaned scene only fills the Environment slot.
     # No character_description injection — generic "small child figure" only.
-    prompt = (
-      f"Wide storybook illustration, full environment visible. "
-      f"Environment: {scene_text}. "
-      f"A small child figure is visible in the scene, about one fifth of the frame height, full body from head to feet, shown from a distance so the whole setting is clearly visible around them. "
-      f"The environment fills most of the frame with rich detail. "
-      f"Hand-painted watercolor illustration in classic children's picture book style, like a published storybook. "
-      f"Soft brushstrokes, painted textures, warm colors, NOT photo-realistic, NOT 3D rendered, NOT CGI. "
-      f"Eye-level wide angle, camera pulled back, character small in a big scene."
-    )
-        
-    print(f"[ILLUSTRATION] Final prompt: {prompt[:400]}...")
-
-    payload = {
-        "model": "black-forest-labs/FLUX.1-schnell",
-        "prompt": prompt,
-        "image_size": "768x1024",
-        "num_inference_steps": 4,
-        "n": 1
-    }
+    if req.shot_type == "hero":
+        prompt = (
+            f"Hand-painted watercolor children's storybook illustration, hero shot. "
+            f"A young child is the main focus, shown from chest-up or full body, taking up about half the frame, face clearly visible with big expressive eyes, soft rosy cheeks, friendly smile. "
+            f"Background environment: {scene_text}. "
+            f"The environment is visible behind the child, soft and slightly out of focus, supporting the character. "
+            f"Hand-painted watercolor in classic children's picture book style, soft brushstrokes, painted textures, warm cozy colors, gentle lighting. "
+            f"NOT photo-realistic, NOT 3D rendered, NOT CGI. "
+            f"Like a published children's picture book illustration."
+        )
+    else:
+        prompt = (
+            f"Hand-painted watercolor children's storybook illustration, wide shot. "
+            f"Environment: {scene_text}. "
+            f"A small child figure is visible in the scene, about one fifth of the frame height, full body from head to feet, shown from a distance so the whole setting is clearly visible around them. "
+            f"The environment fills most of the frame with rich detail. "
+            f"Hand-painted watercolor in classic children's picture book style, soft brushstrokes, painted textures, warm colors, gentle lighting. "
+            f"NOT photo-realistic, NOT 3D rendered, NOT CGI. "
+            f"Eye-level wide angle, camera pulled back, character small in a big scene."
+        )
 
     try:
         response = requests.post(
