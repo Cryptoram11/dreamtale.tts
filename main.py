@@ -33,11 +33,12 @@ class TTSRequest(BaseModel):
 class IllustrationRequest(BaseModel):
     image_url: str = ""
     character_name: str
-    scene: str
+    scene: str =""
     age: int = 6
     character_description: str = ""
     reference_image_id: str = ""
     shot_type: str = "wide"
+    image_prompt: str = ""
 
 class DescribeChildRequest(BaseModel):
     photo_url: str = ""
@@ -200,7 +201,58 @@ def create_illustration(req: IllustrationRequest):
     # Option 1 strategy: no appearance anchor in the text prompt. Character consistency
     # will come from Kontext-pro reference image wiring on pages 2+ (future work).
     print(f"[ILLUSTRATION] Character description received (ignored for wide shots): {req.character_description[:80] if req.character_description else 'none'}")
+    # NEW PATH: if image_prompt is provided, use it directly and skip all the old logic.
+    # This bypasses regex, template branching, shot_type logic — everything.
+    if req.image_prompt and req.image_prompt.strip():
+        prompt = req.image_prompt.strip()
+        print(f"[ILLUSTRATION] Using direct image_prompt: {prompt[:200]}...")
 
+        payload = {
+            "model": "black-forest-labs/FLUX.1-schnell",
+            "prompt": prompt,
+            "image_size": "768x1024",
+            "num_inference_steps": 4,
+            "n": 1
+        }
+
+        try:
+            response = requests.post(
+                "https://api.siliconflow.com/v1/images/generations",
+                headers=headers,
+                json=payload,
+                timeout=120
+            )
+            if response.status_code != 200:
+                print(f"[ILLUSTRATION ERROR] SiliconFlow returned {response.status_code}: {response.text}")
+                raise HTTPException(status_code=500, detail=f"SiliconFlow error: {response.text}")
+            result = response.json()
+            images = result.get("images", [])
+            if not images:
+                raise HTTPException(status_code=500, detail="No image returned")
+            siliconflow_url = images[0].get("url", "")
+            if not siliconflow_url:
+                raise HTTPException(status_code=500, detail="No image URL returned")
+            img_response = requests.get(siliconflow_url, timeout=30)
+            if img_response.status_code != 200:
+                raise HTTPException(status_code=500, detail="Failed to fetch image from SiliconFlow")
+            img_id = str(uuid.uuid4())
+            photo_store[img_id] = {
+                "data": img_response.content,
+                "content_type": "image/jpeg"
+            }
+            proxied_url = f"https://dreamtale-tts.onrender.com/photo/{img_id}"
+            print(f"[ILLUSTRATION] Success: {proxied_url}")
+            return {"illustration_url": proxied_url}
+        except requests.exceptions.Timeout:
+            print("[ILLUSTRATION ERROR] SiliconFlow request timed out")
+            raise HTTPException(status_code=500, detail="Image generation timed out")
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"[ILLUSTRATION ERROR] {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    # OLD PATH: if no image_prompt, use the existing scene + template + regex logic below.
     scene_text = req.scene or ""
 
     # Sentence-level filter: drop any sentence that mentions a person or person-action.
