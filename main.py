@@ -250,6 +250,14 @@ def create_illustration(req: IllustrationRequest):
             f"Eye-level wide angle, camera pulled back, character small in a big scene."
         )
 
+    payload = {
+        "model": "black-forest-labs/FLUX.1-schnell",
+        "prompt": prompt,
+        "image_size": "768x1024",
+        "num_inference_steps": 4,
+        "n": 1
+    }
+    
     try:
         response = requests.post(
             "https://api.siliconflow.com/v1/images/generations",
