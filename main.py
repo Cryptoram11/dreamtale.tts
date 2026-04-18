@@ -41,6 +41,11 @@ class StoryRequest(BaseModel):
     story_type: str
     character_description: str = ''
 
+class ThemeRequest(BaseModel):
+    language: str
+    recent_themes: list = []
+    child_age: int = None
+
 @app.get("/")
 def root():
     return {"status": "DreamTale server is running"}
@@ -313,3 +318,67 @@ The main character is {req.child_name}.'''
     except Exception as e:
         print(f"[STORY ERROR] {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/generate-theme")
+def generate_theme(req: ThemeRequest):
+    import openai
+    
+    if not OPENAI_API_KEY:
+        raise HTTPException(status_code=500, detail="OpenAI API key not configured")
+    
+    client = openai.OpenAI(api_key=OPENAI_API_KEY)
+    
+    fallbacks = [
+        'A tiny dragon who is afraid of fire and wants to be a baker',
+        'A race across the ocean on the backs of friendly whales',
+        'A pet goldfish who secretly runs the household at night',
+    ]
+    
+    recent_block = 'None yet.' if not req.recent_themes else '\n'.join([f'- {t}' for t in req.recent_themes[:10]])
+    
+    import random
+    seed = random.randint(0, 99999)
+    
+    # Age-based category selection (simplified from your Dart code)
+    age_block = f'AGE: {req.child_age} years old. Fun adventures appropriate for this age.'
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            response_format={"type": "json_object"},
+            temperature=1.1,
+            messages=[
+                {
+                    "role": "system",
+                    "content": '''You are a creative children's story idea generator. Output ONLY a JSON object: {"theme": "..."}
+The theme must be ONE SHORT SENTENCE, 8-16 words, in the requested language.
+Mix genres: magical, realistic, silly, adventurous.
+NEVER repeat recent themes. NEVER use overused tropes.
+Pick themes with ONE clear physical setting and CONCRETE visual subjects.'''
+                },
+                {
+                    "role": "user",
+                    "content": f'''Give me ONE fresh story theme.
+
+LANGUAGE: {req.language}
+{age_block}
+
+RECENT THEMES TO AVOID:
+{recent_block}
+
+CREATIVITY SEED: {seed}'''
+                }
+            ]
+        )
+        
+        content = json.loads(response.choices[0].message.content)
+        theme = content.get('theme', '').strip()
+        
+        if theme:
+            return {"theme": theme}
+        
+        return {"theme": random.choice(fallbacks)}
+    
+    except Exception as e:
+        print(f"[THEME ERROR] {str(e)}")
+        return {"theme": random.choice(fallbacks)}
