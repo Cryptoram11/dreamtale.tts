@@ -97,16 +97,16 @@ def tts_stream(req: TTSRequest):
     if response.status_code != 200:
         raise HTTPException(status_code=500, detail=f"Google TTS error: {response.text}")
 
-   audio_bytes = base64.b64decode(response.json().get("audioContent", ""))
-return StreamingResponse(
-    io.BytesIO(audio_bytes),
-    media_type="audio/mpeg",
-    headers={
-        "Content-Disposition": "inline",
-        "Accept-Ranges": "bytes",
-        "Content-Length": str(len(audio_bytes))
-    }
-)
+    audio_bytes = base64.b64decode(response.json().get("audioContent", ""))
+        return StreamingResponse(
+            io.BytesIO(audio_bytes),
+            media_type="audio/mpeg",
+            headers={
+                "Content-Disposition": "inline",
+                "Accept-Ranges": "bytes",
+                "Content-Length": str(len(audio_bytes))
+            }
+        )
 
 @app.post("/create-illustration")
 def create_illustration(req: IllustrationRequest):
