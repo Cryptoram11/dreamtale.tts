@@ -39,7 +39,7 @@ class StoryRequest(BaseModel):
     length: str
     language: str
     story_type: str
-    character_description: str = ''
+    character_description: str = ""
 
 class ThemeRequest(BaseModel):
     language: str
@@ -178,20 +178,162 @@ def generate_story(req: StoryRequest):
 
     client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
-    description = req.character_description if req.character_description else f'a {req.age} year old child'
-    characters_block = f'- {req.child_name}: {description}'
+    description = req.character_description if req.character_description else f"a {req.age} year old child"
+    characters_block = f"- {req.child_name}: {description}"
 
-    system_prompt = '''You are a world-class children's book author AND an expert at writing FLUX image generation prompts. You write beautiful original stories AND ready-to-use image prompts for each page.
+    system_prompt = (
+        "You are a world-class children's book author AND an expert at writing FLUX image generation prompts. "
+        "You write beautiful original stories AND ready-to-use image prompts for each page.\n\n"
+        "TWO SEPARATE JOBS, NEVER MIX THEM:\n\n"
+        "JOB 1 — STORY TEXT (\"text\" field):\n"
+        "- Write the story. Dialogue, action, emotions, plot.\n"
+        "- NEVER describe what characters look like in the story text. Illustrations handle that.\n\n"
+        "JOB 2 — IMAGE PROMPT (\"image_prompt\" field):\n"
+        "- Write a ready-to-use FLUX prompt that creates a beautiful children's picture book illustration for the page.\n"
+        "- Always in English regardless of story language.\n"
+        "- Follow the STRICT TEMPLATE SYSTEM below exactly.\n"
+        "- CRITICAL: You will be given character descriptions under CHARACTERS. Embed each character's full description EXACTLY as given into every image_prompt. Do not paraphrase, do not shorten, do not change anything. Use the descriptions verbatim.\n"
+        "- CRITICAL: Every image_prompt must depict the KEY ACTION or MOMENT described in that page's story text. If the story says a puppy is carrying a muddy paper, the image must show the puppy carrying the muddy paper. NEVER illustrate just the setting — illustrate the SPECIFIC SCENE HAPPENING in the text.\n"
+        "- CRITICAL: Characters must be shown DOING something — mid-action, mid-motion, mid-discovery. NEVER show characters simply standing still.\n\n"
+        "Output ONLY as a JSON object in this exact format:\n"
+        "{\n"
+        '  "title": "Story title here",\n'
+        '  "pages": [\n'
+        "    {\n"
+        '      "text": "Page text in the story\'s language",\n'
+        '      "shot_type": "hero",\n'
+        '      "image_prompt": "A ready-to-use FLUX image generation prompt in English"\n'
+        "    }\n"
+        "  ],\n"
+        '  "moral": "Today\'s lesson: moral here"\n'
+        "}\n\n"
+        f"All \"text\", \"title\", and \"moral\" fields must be in {req.language}. All \"image_prompt\" fields must be in English. The \"shot_type\" field must always be \"hero\".\n\n"
+        "HOW TO WRITE THE image_prompt FIELD — STRICT TEMPLATE SYSTEM:\n\n"
+        "You MUST pick ONE of the 6 SHOT RECIPES below for each page. Fill in the blanks and that is your image_prompt.\n\n"
+        "SHOT RECIPE A — OVER-THE-SHOULDER:\n"
+        "\"Children's picture book illustration. [CHARACTER DESCRIPTION VERBATIM] shown from behind over their shoulder, looking at [SPECIFIC OBJECT/SCENE]. The character takes up the left or right third of the frame. Focus is on [THE THING THEY ARE LOOKING AT] which fills the rest of the image. Whimsical storybook art style, soft lighting, detailed background.\"\n\n"
+        "SHOT RECIPE B — SIDE PROFILE WALKING/MOVING:\n"
+        "\"Children's picture book illustration. Side profile view of [CHARACTER DESCRIPTION VERBATIM] walking/running/moving [DIRECTION] across the frame. Character positioned in left or right third. Background shows [ENVIRONMENT]. Whimsical storybook art style, sense of motion.\"\n\n"
+        "SHOT RECIPE C — HIGH ANGLE LOOKING DOWN:\n"
+        "\"Children's picture book illustration. High angle view looking down at [CHARACTER DESCRIPTION VERBATIM] who is [ACTION] in [LOCATION]. Character appears small in frame, surrounded by [ENVIRONMENT DETAILS]. Whimsical storybook art style, bird's eye perspective.\"\n\n"
+        "SHOT RECIPE D — LOW ANGLE LOOKING UP:\n"
+        "\"Children's picture book illustration. Low angle view looking up at [CHARACTER DESCRIPTION VERBATIM] who is [ACTION]. Character towers in frame against [SKY/CEILING/BACKGROUND]. Whimsical storybook art style, heroic perspective.\"\n\n"
+        "SHOT RECIPE E — THREE-QUARTER BACK VIEW ENTERING (MANDATORY FOR PAGE 1):\n"
+        "\"Children's picture book illustration. Three-quarter back view of [CHARACTER DESCRIPTION VERBATIM] stepping into/entering [NEW LOCATION]. Character positioned in foreground on left or right side. The new environment opens up before them in the background. Whimsical storybook art style, sense of discovery.\"\n\n"
+        "SHOT RECIPE F — SMALL IN BIG SCENE, BACK VIEW (MANDATORY FOR LAST PAGE):\n"
+        "\"Children's picture book illustration. [CHARACTER DESCRIPTION VERBATIM] shown small from behind, standing in a vast [ENVIRONMENT]. Character takes up only small portion of bottom of frame. Epic landscape/scene fills most of image. Whimsical storybook art style, sense of wonder and scale.\"\n\n"
+        "SHOT TYPE RULES:\n"
+        "- Page 1 MUST use Recipe E\n"
+        "- Last page MUST use Recipe F\n"
+        "- Middle pages: freely mix Recipes A, B, C, D — never use the same recipe twice in a row\n"
+        "- NEVER write a centered front-facing portrait composition\n\n"
+        "CRITICAL RULES FOR CHARACTER DESCRIPTIONS:\n"
+        "1. Copy character descriptions EXACTLY into every image_prompt where those characters appear.\n"
+        "2. NEVER paraphrase character descriptions.\n"
+        "3. NEVER add clothing or features not in the original description.\n"
+        "4. NEVER omit details from the original description.\n\n"
+        "STORY LENGTH TARGETS:\n"
+        "- short: 3 pages\n"
+        "- medium: 5 pages\n"
+        "- long: 7 pages\n\n"
+        "STORY QUALITY RULES:\n"
+        "- Action-driven openings (character doing something interesting, not waking up)\n"
+        "- Surprising twists, creative solutions, meaningful choices\n"
+        "- Dialogue that reveals character\n"
+        "- Sensory details (sounds, textures, smells)\n"
+        "- NEVER mention character appearance in story text\n"
+        "- Stories MUST match the requested theme and tone\n\n"
+        "THEME-SPECIFIC TONE GUIDANCE:\n"
+        "For REALISTIC themes (school, friends, sports, family): keep magic minimal, ground in real-world settings.\n"
+        "For FANTASY/ADVENTURE themes (dragons, space, pirates, magic): embrace imagination and wonder.\n\n"
+        "AVOID:\n"
+        "- Waking up openings\n"
+        "- Describing character appearance in story text\n"
+        "- Moralizing or preachy conclusions\n"
+        "- Overly complex vocabulary"
+    )
 
-TWO SEPARATE JOBS, NEVER MIX THEM:
+    user_message = (
+        f"CHARACTERS:\n{characters_block}\n\n"
+        f"Write a {req.length} {req.story_type} story in {req.language} about: {req.theme}\n\n"
+        f"The main character is {req.child_name}."
+    )
 
-JOB 1 — STORY TEXT ("text" field):
-- Write the story. Dialogue, action, emotions, plot.
-- NEVER describe what characters look like in the story text. Illustrations handle that.
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            response_format={"type": "json_object"},
+            temperature=0.3,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message}
+            ]
+        )
 
-JOB 2 — IMAGE PROMPT ("image_prompt" field):
-- Write a ready-to-use FLUX prompt that creates a beautiful children's picture book illustration for the page.
-- Always in English regardless of story language.
-- Follow the STRICT TEMPLATE SYSTEM below exactly.
-- CRITICAL: You will be given a list of character descriptions in the user message under "CHARACTERS". You MUST embed each character's full description EXACTLY as given into every image_prompt where that character appears. Do not paraphrase, do not shorten, do not change clothing or features. Use the descriptions verbatim. This keeps the characters consistent across every page.
-- CRITICAL: Every image_prompt must show the characters actively DOING something — mid-action, mid-motion, mid-discovery. NEVER show characters simply standing still. Use action verbs: leaping, reaching, pointing, laughing, running, hiding, spinning, tumbling, discovering. The illustration must depict the KEY
+        story_json_str = response.choices[0].message.content
+        story_data = json.loads(story_json_str)
+        return {"story": story_data}
+
+    except Exception as e:
+        print(f"[STORY ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/generate-theme")
+def generate_theme(req: ThemeRequest):
+    import openai
+    import random
+
+    if not OPENAI_API_KEY:
+        raise HTTPException(status_code=500, detail="OpenAI API key not configured")
+
+    client = openai.OpenAI(api_key=OPENAI_API_KEY)
+
+    fallbacks = [
+        "A tiny dragon who is afraid of fire and wants to be a baker",
+        "A race across the ocean on the backs of friendly whales",
+        "A pet goldfish who secretly runs the household at night",
+    ]
+
+    recent_block = "None yet." if not req.recent_themes else "\n".join([f"- {t}" for t in req.recent_themes[:10]])
+    seed = random.randint(0, 99999)
+    age_block = f"AGE: {req.child_age} years old. Fun adventures appropriate for this age."
+
+    system_content = (
+        "You are a creative children's story idea generator. "
+        "Output ONLY a JSON object: {\"theme\": \"...\"}\n"
+        "The theme must be ONE SHORT SENTENCE, 8-16 words, in the requested language.\n"
+        "Mix genres: magical, realistic, silly, adventurous.\n"
+        "NEVER repeat recent themes. NEVER use overused tropes.\n"
+        "Pick themes with ONE clear physical setting and CONCRETE visual subjects."
+    )
+
+    user_content = (
+        f"Give me ONE fresh story theme.\n\n"
+        f"LANGUAGE: {req.language}\n"
+        f"{age_block}\n\n"
+        f"RECENT THEMES TO AVOID:\n{recent_block}\n\n"
+        f"CREATIVITY SEED: {seed}"
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            response_format={"type": "json_object"},
+            temperature=1.1,
+            messages=[
+                {"role": "system", "content": system_content},
+                {"role": "user", "content": user_content}
+            ]
+        )
+
+        content = json.loads(response.choices[0].message.content)
+        theme = content.get("theme", "").strip()
+
+        if theme:
+            return {"theme": theme}
+
+        return {"theme": random.choice(fallbacks)}
+
+    except Exception as e:
+        print(f"[THEME ERROR] {str(e)}")
+        return {"theme": random.choice(fallbacks)}
