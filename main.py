@@ -232,6 +232,8 @@ def generate_story(req: StoryRequest):
         "- EVERY image must depict the specific action, object, or moment described in that page's story text\n"
         "- The environment must contain specific story details — not generic backgrounds\n"
         "- NEVER include any text, letters, words, numbers, watermarks, logos, or copyright symbols in the image\n\n"
+        "- ALWAYS pull the camera back — show the full body of the character AND the surrounding environment. Never crop at the waist or shoulders.\n"
+        "- When animals or creatures appear in the scene, describe their position explicitly: 'standing beside', 'towering above', 'in the background' — never let them overlap with the character\n\n"
         "- NEVER show a character just standing still doing nothing\n"
         "- EVERY image must depict the specific action, object, or moment described in that page's story text\n"
         "- The environment must contain specific story details — not generic backgrounds\n\n"
