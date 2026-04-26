@@ -197,7 +197,7 @@ def generate_story(req: StoryRequest):
         "- short=3 pages, medium=5 pages, long=7 pages\n\n"
         "IMAGE PROMPT RULES:\n"
         "Every image_prompt must follow this exact structure:\n"
-        "\"Children's picture book illustration. [CAMERA AND DISTANCE]. [CHARACTER DESCRIPTION VERBATIM] is [EXACT ACTION FROM STORY TEXT]. [SPECIFIC STORY ELEMENTS VISIBLE IN SCENE]. Whimsical storybook art style. No text, no words, no watermarks.\"\n\n"
+        "\"Children's picture book illustration. [CAMERA AND DISTANCE]. [CHARACTER DESCRIPTION VERBATIM] is [EXACT ACTION FROM STORY TEXT]. In the background: [DESCRIBE AT LEAST 3 SPECIFIC ENVIRONMENT DETAILS FROM THE STORY — objects, colors, lighting, setting elements]. The character is small relative to the scene. Whimsical storybook art style. No text, no words, no watermarks.\"\n\n"
         "CAMERA AND DISTANCE rules:\n"
         "- Page 1: 'Wide shot, full body visible, low camera angle looking slightly up, character face visible'\n"
         "- Last page: 'Wide establishing shot, character small in frame, ground level camera'\n"
