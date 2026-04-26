@@ -128,7 +128,7 @@ def create_illustration(req: IllustrationRequest):
         "model": "black-forest-labs/FLUX.1-schnell",
         "prompt": prompt,
         "image_size": "768x1024",
-        "num_inference_steps": 8,
+        "num_inference_steps": 12,
         "n": 1
     }
 
