@@ -253,7 +253,7 @@ def generate_theme(req: ThemeRequest):
     seed = random.randint(0, 99999)
     age_block = f"AGE: {req.child_age} years old. Fun adventures appropriate for this age."
 
-       system_content = (
+    system_content = (
         "You are a children's story theme generator. "
         "Output ONLY a JSON object: {\"theme\": \"...\"}\n"
         "The theme must be ONE SHORT SENTENCE, 8-16 words, in the requested language.\n\n"
