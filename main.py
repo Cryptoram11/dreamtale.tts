@@ -253,13 +253,18 @@ def generate_theme(req: ThemeRequest):
     seed = random.randint(0, 99999)
     age_block = f"AGE: {req.child_age} years old. Fun adventures appropriate for this age."
 
-    system_content = (
-        "You are a creative children's story idea generator. "
+   system_content = (
+        "You are a children's story theme generator. "
         "Output ONLY a JSON object: {\"theme\": \"...\"}\n"
-        "The theme must be ONE SHORT SENTENCE, 8-16 words, in the requested language.\n"
-        "Mix genres: magical, realistic, silly, adventurous.\n"
-        "NEVER repeat recent themes. NEVER use overused tropes.\n"
-        "Pick themes with ONE clear physical setting and CONCRETE visual subjects."
+        "The theme must be ONE SHORT SENTENCE, 8-16 words, in the requested language.\n\n"
+        "RULES:\n"
+        "- Look at the recent themes and detect what category the user prefers: fantasy, realistic, animals, adventure, school, family, silly, nature, etc.\n"
+        "- Generate a new theme in the SAME category they seem to enjoy, but with a fresh scenario.\n"
+        "- If no recent themes exist, pick based on age: under 4 = simple animals and home; 4-6 = magical creatures and short adventures; 7-10 = school, sports, friendships, mild fantasy; 11+ = real-life challenges, friendships, discovering talents.\n"
+        "- Always match difficulty and concept complexity to the child's age.\n"
+        "- Include both fantasy AND real-life themes in rotation — never stay only in one genre.\n"
+        "- NEVER repeat a recent theme. NEVER use overused tropes like 'a dragon who' or 'a princess who'.\n"
+        "- Theme must have ONE clear setting and ONE concrete situation."
     )
 
     user_content = (
