@@ -194,20 +194,24 @@ def generate_story(req: StoryRequest):
         "- Never mention character appearance in story text\n"
         "- Action-driven opening, not waking up\n"
         "- Add dialogue and sensory details\n"
+        "- Story must have a clear problem, build-up, and satisfying resolution\n"
         "- short=3 pages, medium=5 pages, long=7 pages\n\n"
         "IMAGE PROMPT RULES:\n"
         "Every image_prompt must follow this exact structure:\n"
-        "\"Children's picture book illustration. [CAMERA AND DISTANCE]. [CHARACTER DESCRIPTION VERBATIM] is [DESCRIBE THE ACTION IN PHYSICAL DETAIL: body position, limbs, facial expression, what their hands are doing]. [DESCRIBE WHAT IS HAPPENING IN THE SCENE AROUND THEM: where the creature/object is, what it is doing, how it relates to the character]. In the background: [AT LEAST 3 SPECIFIC ENVIRONMENT DETAILS]. The character is small relative to the scene. Whimsical storybook art style. No text, no words, no watermarks.\"\n\n"
+        "\"Children's picture book illustration. [CAMERA AND DISTANCE]. [CHARACTER DESCRIPTION VERBATIM] is [DESCRIBE THE ACTION IN PHYSICAL DETAIL: body position, limbs, facial expression, what their hands are doing]. [DESCRIBE WHAT IS HAPPENING IN THE SCENE AROUND THEM: where the creature/object is, what it is doing, how it relates to the character]. In the background: [AT LEAST 3 SPECIFIC ENVIRONMENT DETAILS FROM THE STORY]. The character is small relative to the scene. Whimsical storybook art style. No text, no words, no watermarks.\"\n\n"
         "CAMERA AND DISTANCE rules:\n"
-        "- Page 1: 'Wide shot, full body visible, low camera angle looking slightly up, character face visible'\n"
+        "- Page 1: 'Wide shot, full body visible, low camera angle looking slightly up, character face and expression visible'\n"
         "- Last page: 'Wide establishing shot, character small in frame, ground level camera'\n"
         "- Middle pages: alternate between 'Wide shot, full body visible' and 'Medium wide shot, character from knees up'\n"
         "- NEVER crop closer than knees. NEVER use high angle or bird's eye view.\n\n"
         "CHARACTER rules:\n"
         "- Paste character description VERBATIM into every prompt\n"
-        "- When animals/creatures appear, state their position: 'standing 2 meters to the left of the character'\n\n"
-        "CRITICAL: The image must show the specific action happening in the story text. Not just the setting."
+        "- When animals or creatures appear, state their exact position relative to the character: 'standing 2 meters to the left', 'perched on a branch above', 'running ahead of the character'\n"
+        "- NEVER merge a character and an animal into one figure\n\n"
+        "CRITICAL: The image must illustrate the specific moment happening in the story text. "
+        "A viewer who has not read the story should understand what is happening just by looking at the image."
     )
+
     user_message = (
         f"CHARACTERS:\n{characters_block}\n\n"
         f"Write a {req.length} {req.story_type} story in {req.language} about: {req.theme}\n\n"
@@ -218,7 +222,7 @@ def generate_story(req: StoryRequest):
         response = client.chat.completions.create(
             model="gpt-4o",
             response_format={"type": "json_object"},
-            temperature=0.3,
+            temperature=0.7,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message}
@@ -244,14 +248,14 @@ def generate_theme(req: ThemeRequest):
     client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
     fallbacks = [
-        "A tiny dragon who is afraid of fire and wants to be a baker",
-        "A race across the ocean on the backs of friendly whales",
-        "A pet goldfish who secretly runs the household at night",
+        "A child who forgot their homework finds a creative solution",
+        "Two friends disagree on the playground and learn to listen",
+        "A kid discovers a hidden talent during a school talent show",
     ]
 
     recent_block = "None yet." if not req.recent_themes else "\n".join([f"- {t}" for t in req.recent_themes[:10]])
     seed = random.randint(0, 99999)
-    age_block = f"AGE: {req.child_age} years old. Fun adventures appropriate for this age."
+    age_block = f"AGE: {req.child_age} years old."
 
     system_content = (
         "You are a children's story theme generator. "
@@ -259,11 +263,12 @@ def generate_theme(req: ThemeRequest):
         "The theme must be ONE SHORT SENTENCE, 8-16 words, in the requested language.\n\n"
         "RULES:\n"
         "- Look at the recent themes and detect what category the user prefers: fantasy, realistic, animals, adventure, school, family, silly, nature, etc.\n"
-        "- Generate a new theme in the SAME category they seem to enjoy, but with a fresh scenario.\n"
-        "- If no recent themes exist, pick based on age: under 4 = simple animals and home; 4-6 = magical creatures and short adventures; 7-10 = school, sports, friendships, mild fantasy; 11+ = real-life challenges, friendships, discovering talents.\n"
+        "- Generate a new theme in the SAME category they seem to enjoy, but with a completely fresh scenario.\n"
+        "- If no recent themes exist, pick based on age: under 4 = simple animals and home situations; 4-6 = animals, simple adventures, family; 7-10 = school, sports, friendships, mild fantasy; 11+ = real-life challenges, discovering talents, friendships.\n"
         "- Always match difficulty and concept complexity to the child's age.\n"
-        "- Include both fantasy AND real-life themes in rotation — never stay only in one genre.\n"
-        "- NEVER repeat a recent theme. NEVER use overused tropes like 'a dragon who' or 'a princess who'.\n"
+        "- Rotate between fantasy AND real-life themes — never stay in one genre more than 2 themes in a row.\n"
+        "- NEVER use the word magical. NEVER use overused tropes like 'a dragon who' or 'a princess who'.\n"
+        "- NEVER repeat or closely resemble a recent theme.\n"
         "- Theme must have ONE clear setting and ONE concrete situation."
     )
 
@@ -272,6 +277,7 @@ def generate_theme(req: ThemeRequest):
         f"LANGUAGE: {req.language}\n"
         f"{age_block}\n\n"
         f"RECENT THEMES TO AVOID:\n{recent_block}\n\n"
+        f"PATTERN DETECTED: Look at the recent themes above and identify what category they belong to. Generate a theme in that SAME category.\n\n"
         f"CREATIVITY SEED: {seed}"
     )
 
@@ -279,7 +285,7 @@ def generate_theme(req: ThemeRequest):
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             response_format={"type": "json_object"},
-            temperature=1.1,
+            temperature=0.7,
             messages=[
                 {"role": "system", "content": system_content},
                 {"role": "user", "content": user_content}
