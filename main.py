@@ -70,7 +70,7 @@ def tts_stream(req: TTSRequest):
     # Per-language speed tuning: nova reads English fast, Arabic slow
     speed_map = {
         "en": 0.9,
-        "ar": 1.15,
+        "ar": 1.05,
     }
     speed = speed_map.get(req.language, 1.0)
 
