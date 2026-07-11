@@ -265,10 +265,13 @@ def generate_story(req: StoryRequest):
         "- The moral must name the SPECIFIC thing the hero did in this story, not a generic virtue.\n"
         "- Bad: 'Bravery grows with a helping hand.' Good: 'Leona asked the teacher for help instead of hiding — asking is brave.'\n"
         "- The moral must connect to the theme the parent chose.\n\n"
+        "- The action named in the moral MUST actually happen in the story text. Never invent an action for the moral that the hero did not do in the pages.\n\n"
+
         "CHARACTER DESCRIPTION RULES:\n"
         "- The CHARACTERS block below contains each character's exact description including their outfit.\n"
         "- Paste each description into every image_prompt CHARACTER-FOR-CHARACTER. Never reword, shorten, hyphenate differently, or split it. It is one atomic block.\n"
         "- The name alone is NEVER enough. Every image_prompt must contain the FULL physical description (age, skin, face, hair, eyes, outfit) even though it repeats on every page. Writing just 'Leona is...' without the full description is a failure.\n""- OUTFIT ADAPTATION: if the story setting demands different clothing (winter, rain, swimming, bedtime), adapt the garment ONCE for the whole story but KEEP THE SAME COLOR (red t-shirt becomes red winter coat, red pajamas). Then use that adapted outfit identically on every page. Never change clothing mid-story.\n"
+        "- Format: 'NAME, DESCRIPTION, is ACTION' — for example: 'Leona, a 3 year old girl with olive skin, a round face, braided light brown hair, brown eyes, is holding her mother's hand'. Note the commas — never write 'is' twice.\n"
         "- MULTI-CHARACTER: assign each character a fixed position ('on the left, [full description A]; on the right, [full description B]') and keep those positions on every page. Never merge characters. Never drop a character from a page where the story text includes them.\n\n"
         "IMAGE PROMPT RULES:\n"
         "Every image_prompt must follow this exact structure:\n"
