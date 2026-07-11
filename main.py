@@ -62,51 +62,57 @@ def get_photo(photo_id: str):
 
 @app.post("/tts-stream")
 def tts_stream(req: TTSRequest):
-    if not GOOGLE_API_KEY:
-        raise HTTPException(status_code=500, detail="API key not configured")
+    if not OPENAI_API_KEY:
+        raise HTTPException(status_code=500, detail="OpenAI API key not configured")
     if not req.text or not req.text.strip():
         raise HTTPException(status_code=400, detail="Text is empty")
 
-    voice_map = {
-        "en":  {"languageCode": "en-US",  "name": "en-US-Journey-F"},
-        "ar":  {"languageCode": "ar-XA",  "name": "ar-XA-Wavenet-D"},
-        "fr":  {"languageCode": "fr-FR",  "name": "fr-FR-Journey-F"},
-        "es":  {"languageCode": "es-ES",  "name": "es-ES-Journey-F"},
-        "pt":  {"languageCode": "pt-BR",  "name": "pt-BR-Wavenet-A"},
-        "de":  {"languageCode": "de-DE",  "name": "de-DE-Journey-F"},
-        "zh":  {"languageCode": "cmn-CN", "name": "cmn-CN-Wavenet-A"},
-        "hi":  {"languageCode": "hi-IN",  "name": "hi-IN-Wavenet-A"},
-        "tr":  {"languageCode": "tr-TR",  "name": "tr-TR-Wavenet-E"},
-        "id":  {"languageCode": "id-ID",  "name": "id-ID-Wavenet-A"},
-        "ru":  {"languageCode": "ru-RU",  "name": "ru-RU-Wavenet-A"},
-        "ja":  {"languageCode": "ja-JP",  "name": "ja-JP-Wavenet-A"},
-        "ko":  {"languageCode": "ko-KR",  "name": "ko-KR-Wavenet-A"},
-        "it":  {"languageCode": "it-IT",  "name": "it-IT-Journey-F"},
-        "nl":  {"languageCode": "nl-NL",  "name": "nl-NL-Wavenet-D"},
+    # Per-language speed tuning: nova reads English fast, Arabic slow
+    speed_map = {
+        "en": 0.9,
+        "ar": 1.05,
     }
+    speed = speed_map.get(req.language, 1.0)
 
-    voice = voice_map.get(req.language, voice_map["en"])
-    payload = {
-        "input": {"text": req.text.strip()},
-        "voice": voice,
-        "audioConfig": {"audioEncoding": "MP3", "speakingRate": 0.85}
-    }
+    try:
+        response = requests.post(
+            "https://api.openai.com/v1/audio/speech",
+            headers={
+                "Authorization": f"Bearer {OPENAI_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "gpt-4o-mini-tts",
+                "voice": "nova",
+                "input": req.text.strip(),
+                "speed": speed,
+                "instructions": "You are a loving parent reading a bedtime story to your own small child. Speak in a low, soft, intimate voice, full of warmth and tenderness, almost a whisper. Smile through your voice. Slow down at the end of sentences and let them land gently. Pause between sentences like you're letting the child picture the scene.",
+                "response_format": "mp3",
+            },
+            timeout=120,
+        )
+        if response.status_code != 200:
+            print(f"[TTS ERROR] OpenAI returned {response.status_code}: {response.text}")
+            raise HTTPException(status_code=500, detail=f"OpenAI TTS error: {response.text}")
 
-    url = f"https://texttospeech.googleapis.com/v1/text:synthesize?key={GOOGLE_API_KEY}"
-    response = requests.post(url, json=payload)
-    if response.status_code != 200:
-        raise HTTPException(status_code=500, detail=f"Google TTS error: {response.text}")
-
-    audio_bytes = base64.b64decode(response.json().get("audioContent", ""))
-    return StreamingResponse(
-        io.BytesIO(audio_bytes),
-        media_type="audio/mpeg",
-        headers={
-            "Content-Disposition": "inline",
-            "Accept-Ranges": "bytes",
-            "Content-Length": str(len(audio_bytes))
-        }
-    )
+        audio_bytes = response.content
+        return StreamingResponse(
+            io.BytesIO(audio_bytes),
+            media_type="audio/mpeg",
+            headers={
+                "Content-Disposition": "inline",
+                "Accept-Ranges": "bytes",
+                "Content-Length": str(len(audio_bytes))
+            }
+        )
+    except requests.exceptions.Timeout:
+        print("[TTS ERROR] OpenAI TTS request timed out")
+        raise HTTPException(status_code=500, detail="TTS timed out")
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[TTS ERROR] {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/create-illustration")
 def create_illustration(req: IllustrationRequest):
@@ -172,6 +178,7 @@ def create_illustration(req: IllustrationRequest):
 @app.post("/generate-story")
 def generate_story(req: StoryRequest):
     import openai
+    import random
 
     if not OPENAI_API_KEY:
         raise HTTPException(status_code=500, detail="OpenAI API key not configured")
@@ -179,7 +186,42 @@ def generate_story(req: StoryRequest):
     client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
     description = req.character_description if req.character_description else f"a {req.age} year old child"
-    characters_block = f"- {req.child_name}: {description}"
+    characters_block = description if "\n" in description else f"- {req.child_name}: {description}"
+
+    # Age-based pages and words per page
+    try:
+        age_num = int(req.age.split(" ")[0].split(" and ")[0])
+    except (ValueError, IndexError):
+        age_num = 5
+
+    length_key = req.length.lower()
+    pages = {"short": 3, "medium": 5}.get(length_key, 7)
+
+    if age_num <= 3:
+        words = {"short": "20-30", "medium": "25-35"}.get(length_key, "30-40")
+        vocab_rule = "Age 2-3: only very simple everyday words, max 3 syllables. Short sentences. Repeat one key phrase on every page — toddlers love repetition."
+    elif age_num <= 5:
+        words = {"short": "40-55", "medium": "50-65"}.get(length_key, "55-70")
+        vocab_rule = "Age 4-5: simple sentences, easy dialogue, familiar words. No abstract words like 'reassured' or 'determined'."
+    elif age_num <= 7:
+        words = {"short": "60-80", "medium": "80-100"}.get(length_key, "100-120")
+        vocab_rule = "Age 6-7: fun adventurous language, simple dialogue, mild suspense allowed."
+    elif age_num <= 10:
+        words = {"short": "80-110", "medium": "100-130"}.get(length_key, "120-160")
+        vocab_rule = "Age 8-10: richer vocabulary, deeper emotions, more complex plot allowed."
+    else:
+        words = {"short": "100-130", "medium": "120-160"}.get(length_key, "150-200")
+        vocab_rule = "Age 11+: sophisticated language, nuanced themes, real-world complexity."
+
+    seed = random.randint(0, 99999)
+    skeletons = [
+        "PROBLEM-SOLVING: the hero faces a concrete problem and solves it through their own idea",
+        "MISUNDERSTANDING: something seems scary or unfair but turns out to be a misunderstanding",
+        "HELPING SOMEONE ELSE: the hero notices someone in trouble and helps them",
+        "OVERCOMING A FEAR: the hero is afraid of something specific and faces it step by step",
+        "UNEXPECTED FRIENDSHIP: the hero meets someone very different and they find common ground",
+    ]
+    skeleton = random.choice(skeletons)
 
     system_prompt = (
         "You are a children's book author who also writes image prompts for each page.\n\n"
@@ -189,13 +231,48 @@ def generate_story(req: StoryRequest):
         '  "pages": [{"text": "...", "shot_type": "hero", "image_prompt": "..."}],\n'
         '  "moral": "..."\n'
         "}\n\n"
-        f"All text/title/moral fields in {req.language}. All image_prompt fields in English.\n\n"
+        f"All text/title/moral fields in {req.language}. All image_prompt fields in English.\n"
+        "ARABIC RULE: If the story language is Arabic, ALL story text, title, and moral MUST be written with FULL tashkeel (حركات) on every word — fatha, damma, kasra, sukun, shadda, tanwin. Like a traditional children's book. No word may be left unvocalized. This applies to the moral field with the same strictness as the pages.\n"
+        "Arabic must be correct, natural فصحى (Modern Standard Arabic) as used in quality children's books. Feminine past-tense verbs end with sukun: ذَهَبَتْ، قَالَتْ، نَعَسَتْ. Use natural phrasing: التَّحَدُّثُ إِلَى المُعَلِّمَةِ not تكليم المعلمة. Re-read every Arabic sentence for grammar before output.\n"
+        "In image_prompt fields, NEVER use Arabic script — transliterate character names to Latin letters (لِيُونَا becomes Leona). Every character of every image_prompt must be English/Latin.\n\n""STEP 1 — CLASSIFY THE THEME. Before writing, silently classify the user's theme into exactly one category:\n"
+        "A) EVERYDAY/REALISTIC (school, family, friends, home, sports, pets)\n"
+        "B) EDUCATIONAL (science, nature, numbers, how things work)\n"
+        "C) VALUES/FEELINGS (sharing, honesty, fear, jealousy, kindness)\n"
+        "D) ADVENTURE (exploration, journeys, discovery — real world)\n"
+        "E) MAGICAL (fantasy, magic, mythical creatures)\n\n"
+        "TONE CONTRACT — follow the rules of the classified category strictly:\n"
+        "- A EVERYDAY: ZERO magic. No talking animals, no enchanted objects, no fantasy. Conflicts are real-kid-sized: getting lost, a broken toy, a disagreement. The wonder comes from the child's real world.\n"
+        "- B EDUCATIONAL: weave 2-3 TRUE facts naturally into the plot. No magic unless the theme explicitly asks. The facts must be accurate.\n"
+        "- C VALUES: the emotional arc IS the plot. Real situations, real feelings. No magic unless the theme asks.\n"
+        "- D ADVENTURE: exciting but real-world. No magic unless the theme explicitly includes it.\n"
+        "- E MAGICAL: full fantasy allowed.\n"
+        "NEVER drift a realistic theme into fantasy. If the parent typed 'first day at school', there are no magical hallways.\n\n"
+        f"PLOT SKELETON for this story: {skeleton}\n"
+        "Use this skeleton as the story's structure. Fill it with fresh, specific details from the theme.\n\n"
+        f"LENGTH: Write EXACTLY {pages} pages. Each page {words} words. Not more pages, not fewer.\n\n"
+        f"VOCABULARY: {vocab_rule}\n\n"
         "STORY RULES:\n"
         "- Never mention character appearance in story text\n"
-        "- Action-driven opening, not waking up\n"
-        "- Add dialogue and sensory details\n"
+        "- Action-driven opening, not waking up, never 'Once upon a time'\n"
+        "- At least 40% dialogue with real kid voices: 'Whoa!' not 'How wonderful!'\n"
+        "- One sensory detail per page (sound, smell, texture, temperature)\n"
         "- Story must have a clear problem, build-up, and satisfying resolution\n"
-        "- short=3 pages, medium=5 pages, long=7 pages\n\n"
+        "- LAST PAGE MUST WIND DOWN: quiet, warm, safe, sleepy. Yawning, cozy light, calm. "
+        "This is a bedtime story — a high-energy ending like 'ready for anything!' is a failure. "
+        "The final sentences should make a child's eyes heavy. "
+        "MANDATORY: the last page must contain at least one physical sleepiness cue — a yawn, heavy eyes, curling up, dimming light, or settling into quiet — in every language, no exceptions. Laughing or cheering on the last page is forbidden.\n\n"
+        "MORAL RULES:\n"
+        "- The moral must name the SPECIFIC thing the hero did in this story, not a generic virtue.\n"
+        "- Bad: 'Bravery grows with a helping hand.' Good: 'Leona asked the teacher for help instead of hiding — asking is brave.'\n"
+        "- The moral must connect to the theme the parent chose.\n\n"
+        "- The action named in the moral MUST actually happen in the story text. Never invent an action for the moral that the hero did not do in the pages.\n\n"
+
+        "CHARACTER DESCRIPTION RULES:\n"
+        "- The CHARACTERS block below contains each character's exact description including their outfit.\n"
+        "- Paste each description into every image_prompt CHARACTER-FOR-CHARACTER. Never reword, shorten, hyphenate differently, or split it. It is one atomic block.\n"
+        "- The name alone is NEVER enough. Every image_prompt must contain the FULL physical description (age, skin, face, hair, eyes, outfit) even though it repeats on every page. Writing just 'Leona is...' without the full description is a failure.\n""- OUTFIT ADAPTATION: if the story setting demands different clothing (winter, rain, swimming, bedtime), adapt the garment ONCE for the whole story but KEEP THE SAME COLOR (red t-shirt becomes red winter coat, red pajamas). Then use that adapted outfit identically on every page. Never change clothing mid-story.\n"
+        "- Format: 'NAME, DESCRIPTION, is ACTION' — for example: 'Leona, a 3 year old girl with olive skin, a round face, braided light brown hair, brown eyes, is holding her mother's hand'. Note the commas — never write 'is' twice.\n"
+        "- MULTI-CHARACTER: assign each character a fixed position ('on the left, [full description A]; on the right, [full description B]') and keep those positions on every page. Never merge characters. Never drop a character from a page where the story text includes them.\n\n"
         "IMAGE PROMPT RULES:\n"
         "Every image_prompt must follow this exact structure:\n"
         "\"Children's picture book illustration. [CAMERA AND DISTANCE]. [CHARACTER DESCRIPTION VERBATIM] is [DESCRIBE THE ACTION IN PHYSICAL DETAIL: body position, limbs, facial expression, what their hands are doing]. [DESCRIBE WHAT IS HAPPENING IN THE SCENE AROUND THEM: where the creature/object is, what it is doing, how it relates to the character]. In the background: [AT LEAST 3 SPECIFIC ENVIRONMENT DETAILS FROM THE STORY]. The character is small relative to the scene. Whimsical storybook art style. No text, no words, no watermarks.\"\n\n"
@@ -204,8 +281,6 @@ def generate_story(req: StoryRequest):
         "- Last page: 'Wide establishing shot, character small in frame, ground level camera'\n"
         "- Middle pages: alternate between 'Wide shot, full body visible' and 'Medium wide shot, character from knees up'\n"
         "- NEVER crop closer than knees. NEVER use high angle or bird's eye view.\n\n"
-        "CHARACTER rules:\n"
-        "- Paste character description VERBATIM into every prompt\n"
         "- When animals or creatures appear, state their exact position relative to the character: 'standing 2 meters to the left', 'perched on a branch above', 'running ahead of the character'\n"
         "- NEVER merge a character and an animal into one figure\n\n"
         "CRITICAL: The image must illustrate the specific moment happening in the story text. "
@@ -213,16 +288,18 @@ def generate_story(req: StoryRequest):
     )
 
     user_message = (
+        f"CREATIVITY SEED: {seed}\n"
+        "This story must be COMPLETELY DIFFERENT from any other story with the same theme — different setting details, different conflict, different resolution.\n\n"
         f"CHARACTERS:\n{characters_block}\n\n"
-        f"Write a {req.length} {req.story_type} story in {req.language} about: {req.theme}\n\n"
-        f"The main character is {req.child_name}."
+        f"Write a {req.length} story in {req.language} about: {req.theme}\n\n"
+        f"The hero(es): {req.child_name}."
     )
 
     try:
         response = client.chat.completions.create(
             model="gpt-4o",
             response_format={"type": "json_object"},
-            temperature=0.7,
+            temperature=0.85,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message}
