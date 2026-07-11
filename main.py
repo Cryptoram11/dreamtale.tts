@@ -232,9 +232,9 @@ def generate_story(req: StoryRequest):
         '  "moral": "..."\n'
         "}\n\n"
         f"All text/title/moral fields in {req.language}. All image_prompt fields in English.\n"
-        "ARABIC RULE: If the story language is Arabic, ALL story text, title, and moral MUST be written with FULL tashkeel (حركات) on every word — fatha, damma, kasra, sukun, shadda, tanwin. Like a traditional children's book. No word may be left unvocalized.\n"
-        "In image_prompt fields, NEVER use Arabic script — transliterate character names to Latin letters (لِيُونَا becomes Leona). Every character of every image_prompt must be English/Latin.\n\n"
-        "STEP 1 — CLASSIFY THE THEME. Before writing, silently classify the user's theme into exactly one category:\n"
+        "ARABIC RULE: If the story language is Arabic, ALL story text, title, and moral MUST be written with FULL tashkeel (حركات) on every word — fatha, damma, kasra, sukun, shadda, tanwin. Like a traditional children's book. No word may be left unvocalized. This applies to the moral field with the same strictness as the pages.\n"
+        "Arabic must be correct, natural فصحى (Modern Standard Arabic) as used in quality children's books. Feminine past-tense verbs end with sukun: ذَهَبَتْ، قَالَتْ، نَعَسَتْ. Use natural phrasing: التَّحَدُّثُ إِلَى المُعَلِّمَةِ not تكليم المعلمة. Re-read every Arabic sentence for grammar before output.\n"
+        "In image_prompt fields, NEVER use Arabic script — transliterate character names to Latin letters (لِيُونَا becomes Leona). Every character of every image_prompt must be English/Latin.\n\n""STEP 1 — CLASSIFY THE THEME. Before writing, silently classify the user's theme into exactly one category:\n"
         "A) EVERYDAY/REALISTIC (school, family, friends, home, sports, pets)\n"
         "B) EDUCATIONAL (science, nature, numbers, how things work)\n"
         "C) VALUES/FEELINGS (sharing, honesty, fear, jealousy, kindness)\n"
