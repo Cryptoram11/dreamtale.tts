@@ -268,7 +268,7 @@ def generate_story(req: StoryRequest):
         "CHARACTER DESCRIPTION RULES:\n"
         "- The CHARACTERS block below contains each character's exact description including their outfit.\n"
         "- Paste each description into every image_prompt CHARACTER-FOR-CHARACTER. Never reword, shorten, hyphenate differently, or split it. It is one atomic block.\n"
-        "- OUTFIT ADAPTATION: if the story setting demands different clothing (winter, rain, swimming, bedtime), adapt the garment ONCE for the whole story but KEEP THE SAME COLOR (red t-shirt becomes red winter coat, red pajamas). Then use that adapted outfit identically on every page. Never change clothing mid-story.\n"
+        "- The name alone is NEVER enough. Every image_prompt must contain the FULL physical description (age, skin, face, hair, eyes, outfit) even though it repeats on every page. Writing just 'Leona is...' without the full description is a failure.\n""- OUTFIT ADAPTATION: if the story setting demands different clothing (winter, rain, swimming, bedtime), adapt the garment ONCE for the whole story but KEEP THE SAME COLOR (red t-shirt becomes red winter coat, red pajamas). Then use that adapted outfit identically on every page. Never change clothing mid-story.\n"
         "- MULTI-CHARACTER: assign each character a fixed position ('on the left, [full description A]; on the right, [full description B]') and keep those positions on every page. Never merge characters. Never drop a character from a page where the story text includes them.\n\n"
         "IMAGE PROMPT RULES:\n"
         "Every image_prompt must follow this exact structure:\n"
