@@ -86,7 +86,7 @@ def tts_stream(req: TTSRequest):
                 "voice": "nova",
                 "input": req.text.strip(),
                 "speed": speed,
-                "instructions": "Read slowly, softly and warmly, like a parent reading a bedtime story to a sleepy child. Pause gently between sentences.",
+                "instructions": "You are a loving parent reading a bedtime story to your own small child. Speak in a low, soft, intimate voice, full of warmth and tenderness, almost a whisper. Smile through your voice. Slow down at the end of sentences and let them land gently. Pause between sentences like you're letting the child picture the scene.",
                 "response_format": "mp3",
             },
             timeout=120,
@@ -231,7 +231,8 @@ def generate_story(req: StoryRequest):
         '  "pages": [{"text": "...", "shot_type": "hero", "image_prompt": "..."}],\n'
         '  "moral": "..."\n'
         "}\n\n"
-        f"All text/title/moral fields in {req.language}. All image_prompt fields in English.\n\n"
+        f"All text/title/moral fields in {req.language}. All image_prompt fields in English.\n"
+        "ARABIC RULE: If the story language is Arabic, ALL story text, title, and moral MUST be written with FULL tashkeel (حركات) on every word — fatha, damma, kasra, sukun, shadda, tanwin. Like a traditional children's book. No word may be left unvocalized.\n\n"
         "STEP 1 — CLASSIFY THE THEME. Before writing, silently classify the user's theme into exactly one category:\n"
         "A) EVERYDAY/REALISTIC (school, family, friends, home, sports, pets)\n"
         "B) EDUCATIONAL (science, nature, numbers, how things work)\n"
