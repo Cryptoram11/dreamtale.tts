@@ -123,6 +123,39 @@ def create_illustration(req: IllustrationRequest):
         raise HTTPException(status_code=400, detail="image_prompt is required")
 
     prompt = req.image_prompt.strip()
+
+    # Server-side style enforcement. GPT is unreliable at reproducing the locked
+    # phrases, so we strip whatever style wording it wrote and impose our own.
+    # This guarantees byte-identical style and no-text instructions on every image.
+    STYLE_BLOCK = ("Children's picture book illustration, soft hand-painted watercolor, "
+                   "gentle pastel palette, soft brush edges, flat 2D, no outlines.")
+    NO_TEXT_BLOCK = ("Absolutely no text, no letters, no words, no writing, no signatures, "
+                     "no watermarks, no captions anywhere in the image.")
+
+    # Remove any leading style sentence GPT wrote (up to and including the first period
+    # that ends an "illustration" preamble), then any trailing no-text sentence.
+    lowered = prompt.lower()
+    for opener in ("children's picture book illustration", "childrens picture book illustration"):
+        if lowered.startswith(opener):
+            first_period = prompt.find(". ")
+            if first_period != -1:
+                prompt = prompt[first_period + 2:].strip()
+            break
+
+    # Strip trailing no-text / watermark phrasing in whatever form GPT produced it
+    for tail in ("absolutely no text", "no text, no words", "no text,", "no words,"):
+        idx = prompt.lower().rfind(tail)
+        if idx != -1:
+            prompt = prompt[:idx].strip()
+            break
+
+    # Remove any competing style wording GPT may have inserted mid-prompt
+    for phrase in ("Whimsical storybook art style.", "Whimsical storybook art style",
+                   "whimsical storybook art style.", "whimsical storybook art style"):
+        prompt = prompt.replace(phrase, "")
+    prompt = " ".join(prompt.split()).strip()
+
+    prompt = f"{STYLE_BLOCK} {prompt.rstrip().rstrip('.')} . {NO_TEXT_BLOCK}"
     print(f"[ILLUSTRATION] Prompt: {prompt[:200]}...")
 
     headers = {
@@ -270,7 +303,9 @@ def generate_story(req: StoryRequest):
         "CHARACTER DESCRIPTION RULES:\n"
         "- The CHARACTERS block below contains each character's exact description including their outfit.\n"
         "- Paste each description into every image_prompt CHARACTER-FOR-CHARACTER. Never reword, shorten, hyphenate differently, or split it. It is one atomic block.\n"
-        "- The name alone is NEVER enough. Every image_prompt must contain the FULL physical description (age, skin, face, hair, eyes, outfit) even though it repeats on every page. Writing just 'Leona is...' without the full description is a failure.\n""- OUTFIT ADAPTATION: if the story setting demands different clothing (winter, rain, swimming, bedtime), adapt the garment ONCE for the whole story but KEEP THE SAME COLOR (red t-shirt becomes red winter coat, red pajamas). Then use that adapted outfit identically on every page. Never change clothing mid-story.\n"
+        "- The name alone is NEVER enough. Every image_prompt must contain the FULL physical description (age, skin, face, hair, eyes, outfit) even though it repeats on every page. Writing just 'Leona is...' without the full description is a failure.\n""- MANDATORY WEATHER STEP: before writing any image_prompt, determine the story's season, weather and setting. Then derive ONE outfit for the whole story that is physically correct for that weather, keeping the character's outfit COLOUR from the CHARACTERS block. Snow or winter: coat, hat, gloves, boots — never bare arms or shorts. Rain: raincoat and boots. Swimming: swimsuit. Bedtime indoors: pyjamas. Hot sunny day: the base outfit as given.\n"
+        "- A child in short sleeves in the snow is a FAILURE. Clothing must match the weather on every page.\n"
+        "- Once derived, that outfit is fixed: write it identically in every image_prompt of the story. Never change clothing between pages.\n"
         "- Format: 'NAME, DESCRIPTION, is ACTION' — for example: 'Leona, a 3 year old girl with olive skin, a round face, braided light brown hair, brown eyes, is holding her mother's hand'. Note the commas — never write 'is' twice.\n"
         "- COLOUR LOCK: hair colour, eye colour, skin tone and outfit colour must be reproduced EXACTLY as written in the CHARACTERS block, on every page. Never substitute a similar shade — blonde never becomes auburn, black never becomes brown, red never becomes pink. A colour change between pages is a failure.\n"
         "- MULTI-CHARACTER: assign each character a fixed position ('on the left, [full description A]; on the right, [full description B]') and keep those positions on every page. Never merge characters. Never drop a character from a page where the story text includes them.\n\n"
