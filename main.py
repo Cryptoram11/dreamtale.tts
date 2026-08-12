@@ -421,3 +421,42 @@ def generate_theme(req: ThemeRequest):
     except Exception as e:
         print(f"[THEME ERROR] {str(e)}")
         return {"theme": random.choice(fallbacks)}
+# --- wake ShopBot each morning ------------------------------------------
+# dreamtale is on a PAID Render instance so it never sleeps -> this loop
+# always runs on time. ShopBot is on the free tier: it sleeps overnight, and
+# every free pinger (cron-job.org, EasyCron) caps its timeout at 30s, which
+# is too short to outlast ShopBot's 50-60s cold start - so the 07:30 digest
+# kept finding it asleep. One long-timeout ping at 07:00 wakes it; after that
+# the cron-job.org keep-alive (*/14 6-20) holds it up for the rest of the day.
+# Only ONE request per day, so ShopBot still sleeps at night and stays well
+# under Render's 750 free instance-hours.
+import threading
+import time as _time
+import datetime as _dt
+import logging as _logging
+import requests as _requests
+
+_SHOPBOT_URL = "https://shopbot-6vrn.onrender.com/health"
+_WAKE_HOUR = 7          # 07:00 Israel time
+_WAKE_MINUTE = 0
+_log = _logging.getLogger("shopbot-wake")
+
+
+def _wake_shopbot_daily():
+    last_woke = None
+    while True:
+        try:
+            now = _dt.datetime.now()          # Render TZ is UTC by default;
+            # set TZ=Asia/Jerusalem in dreamtale's env vars so this is local time
+            if (now.hour == _WAKE_HOUR and now.minute >= _WAKE_MINUTE
+                    and last_woke != now.date()):
+                # 120s: sits through ShopBot's full cold start, no 30s cap here
+                r = _requests.get(_SHOPBOT_URL, timeout=120)
+                _log.info("shopbot wake -> %s", r.status_code)
+                last_woke = now.date()         # once per day only
+        except Exception as e:
+            _log.warning("shopbot wake failed: %s", e)
+        _time.sleep(60)                        # check once a minute
+
+
+threading.Thread(target=_wake_shopbot_daily, daemon=True).start()
